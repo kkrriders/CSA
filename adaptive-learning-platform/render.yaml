@@ -5,6 +5,7 @@ services:
     region: oregon
     plan: free
     branch: main
+    rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
@@ -15,8 +16,10 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: LLM_PROVIDER
-        value: ollama
-      - key: OLLAMA_BASE_URL
-        value: http://localhost:11434
+        value: openrouter
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: mistralai/mistral-7b-instruct
       - key: CORS_ORIGINS
-        value: https://your-frontend-url.vercel.app
+        value: https://your-frontend-domain.vercel.app
