@@ -1,6 +1,7 @@
 from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from app.core.config import get_settings
+import certifi
 
 settings = get_settings()
 
@@ -18,11 +19,10 @@ async def connect_to_mongo():
     # Configure MongoDB client with SSL/TLS settings for Atlas
     db.client = AsyncIOMotorClient(
         settings.MONGODB_URI,
-        tls=True,
-        tlsAllowInvalidCertificates=True,
-        serverSelectionTimeoutMS=5000,
-        connectTimeoutMS=10000,
-        socketTimeoutMS=10000
+        tlsCAFile=certifi.where(),
+        serverSelectionTimeoutMS=10000,
+        connectTimeoutMS=20000,
+        socketTimeoutMS=20000
     )
     db.db = db.client[settings.MONGODB_DB_NAME]
     print(f"✅ Connected to MongoDB: {settings.MONGODB_DB_NAME}")
