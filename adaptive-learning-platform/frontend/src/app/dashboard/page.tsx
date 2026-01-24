@@ -2,15 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Brain, Upload, FileText, Loader, Trash2, PlayCircle } from 'lucide-react';
+import { Upload, FileText, Loader, Trash2, PlayCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import type { DocumentListItem } from '@/types';
+import StreakCounter from '@/components/dashboard/StreakCounter';
+import QuickStatsCards from '@/components/dashboard/QuickStatsCards';
+import ActivityFeed from '@/components/dashboard/ActivityFeed';
+import TopicOverview from '@/components/dashboard/TopicOverview';
+import RecommendedActions from '@/components/dashboard/RecommendedActions';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const [documents, setDocuments] = useState<DocumentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -72,114 +77,122 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <Brain className="w-8 h-8 text-blue-600" />
-            <span className="text-2xl font-bold">Adaptive Learning</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-700">{user?.name}</span>
-            <button
-              onClick={logout}
-              className="px-4 py-2 text-gray-600 hover:text-gray-900"
-            >
-              Logout
-            </button>
-          </div>
+    <div className="container mx-auto px-4 py-8">
+      {/* Header Row */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold mb-2 dark:text-white">Welcome back, {user?.name}!</h1>
+          <p className="text-gray-600 dark:text-gray-400">Ready to continue your learning journey?</p>
         </div>
-      </header>
-
-      <div className="container mx-auto px-4 py-8">
-        {/* Welcome */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome back, {user?.name}!</h1>
-          <p className="text-gray-600">Upload study materials and start learning</p>
+        <div className="w-full md:w-auto">
+          {/* We'll put StreakCounter in the sidebar on large screens, or here on mobile? 
+              Actually, let's just keep it in the sidebar for layout cleanliness, 
+              or maybe a small version here. 
+              Let's put QuickStats here or below.
+              The prompt plan was Top Row: Welcome + Streak.
+          */}
         </div>
+      </div>
 
-        {/* Upload Section */}
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-8">
-          <h2 className="text-xl font-bold mb-4">Upload Document</h2>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-500 transition">
-            <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <label className="cursor-pointer">
-              <span className="text-blue-600 hover:text-blue-700 font-semibold">
-                {uploading ? 'Uploading...' : 'Click to upload'}
-              </span>
-              <span className="text-gray-600"> or drag and drop</span>
-              <input
-                type="file"
-                accept=".pdf,.md"
-                onChange={handleFileUpload}
-                disabled={uploading}
-                className="hidden"
-              />
-            </label>
-            <p className="text-sm text-gray-500 mt-2">PDF or Markdown files (Max 50MB)</p>
-          </div>
-        </div>
+      {/* Stats Row */}
+      <div className="mb-8">
+        <QuickStatsCards />
+      </div>
 
-        {/* Documents List */}
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <h2 className="text-xl font-bold mb-6">Your Documents</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Content Column (Left) */}
+        <div className="lg:col-span-2 space-y-8">
+          <RecommendedActions />
 
-          {loading ? (
-            <div className="text-center py-12">
-              <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
-              <p className="text-gray-600 mt-4">Loading documents...</p>
+          {/* Upload Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
+            <h2 className="text-xl font-bold mb-4 dark:text-white">Upload Document</h2>
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center hover:border-blue-500 dark:hover:border-blue-500 transition">
+              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <label className="cursor-pointer">
+                <span className="text-blue-600 hover:text-blue-700 font-semibold">
+                  {uploading ? 'Uploading...' : 'Click to upload'}
+                </span>
+                <span className="text-gray-600 dark:text-gray-400"> or drag and drop</span>
+                <input
+                  type="file"
+                  accept=".pdf,.md"
+                  onChange={handleFileUpload}
+                  disabled={uploading}
+                  className="hidden"
+                />
+              </label>
+              <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">PDF or Markdown files (Max 50MB)</p>
             </div>
-          ) : documents.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600">No documents yet. Upload one to get started!</p>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {documents.map((doc) => (
-                <div
-                  key={doc._id}
-                  className="border rounded-lg p-4 hover:shadow-md transition"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg">{doc.title}</h3>
-                      <div className="flex gap-4 text-sm text-gray-600 mt-1">
-                        <span>{doc.sections_count} sections</span>
-                        <span>{doc.word_count} words</span>
-                        <span className={`px-2 py-1 rounded ${
-                          doc.processing_status === 'completed' ? 'bg-green-100 text-green-700' :
-                          doc.processing_status === 'processing' ? 'bg-yellow-100 text-yellow-700' :
-                          doc.processing_status === 'failed' ? 'bg-red-100 text-red-700' :
-                          'bg-gray-100 text-gray-700'
-                        }`}>
-                          {doc.processing_status}
-                        </span>
+          </div>
+
+          {/* Documents List */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
+            <h2 className="text-xl font-bold mb-6 dark:text-white">Your Documents</h2>
+
+            {loading ? (
+              <div className="text-center py-12">
+                <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+                <p className="text-gray-600 dark:text-gray-400 mt-4">Loading documents...</p>
+              </div>
+            ) : documents.length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-600 dark:text-gray-400">No documents yet. Upload one to get started!</p>
+              </div>
+            ) : (
+              <div className="grid gap-4">
+                {documents.map((doc) => (
+                  <div
+                    key={doc._id}
+                    className="border dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition dark:bg-gray-800"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg dark:text-white">{doc.title}</h3>
+                        <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          <span>{doc.sections_count} sections</span>
+                          <span>{doc.word_count} words</span>
+                          <span className={`px-2 py-1 rounded ${
+                            doc.processing_status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
+                            doc.processing_status === 'processing' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                            doc.processing_status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
+                            'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                          }`}>
+                            {doc.processing_status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {doc.processing_status === 'completed' && (
+                          <button
+                            onClick={() => handleStartTest(doc._id)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                          >
+                            <PlayCircle className="w-4 h-4" />
+                            Start Test
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(doc._id)}
+                          className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      {doc.processing_status === 'completed' && (
-                        <button
-                          onClick={() => handleStartTest(doc._id)}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-                        >
-                          <PlayCircle className="w-4 h-4" />
-                          Start Test
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDelete(doc._id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar Column (Right) */}
+        <div className="space-y-8">
+          <StreakCounter />
+          <TopicOverview />
+          <ActivityFeed />
         </div>
       </div>
     </div>

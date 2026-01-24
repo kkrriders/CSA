@@ -29,6 +29,18 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "./uploads"
     CORS_ORIGINS: Union[List[str], str] = "http://localhost:3000,http://localhost:5173"
 
+    # Redis Cache
+    REDIS_URL: str = "redis://localhost:6379"
+    CACHE_ENABLED: bool = True
+    CACHE_TTL: int = 300  # 5 minutes default TTL
+
+    # Email Configuration
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_FROM: str = "noreply@adaptivelearning.com"
+    MAIL_PORT: int = 587
+    MAIL_SERVER: str = "smtp.gmail.com"
+
     # Test Settings
     DEFAULT_QUESTION_TIME: int = 90  # seconds
     MIN_QUESTIONS: int = 5

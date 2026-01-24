@@ -135,6 +135,10 @@ class APIClient {
     });
   }
 
+  async finishTestEarly(sessionId: string): Promise<void> {
+    await this.client.post(`/tests/${sessionId}/finish-early`);
+  }
+
   async getTestResults(sessionId: string): Promise<TestResult> {
     const { data } = await this.client.get(`/tests/${sessionId}/results`);
     return data;

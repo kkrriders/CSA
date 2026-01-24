@@ -199,27 +199,62 @@ IMPORTANT: Return ONLY the JSON array, no markdown, no additional text.
         question: str,
         user_answer: str,
         correct_answer: str,
-        context: str
+        context: str,
+        behavioral_context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, str]:
-        """Generate detailed explanation for why an answer was wrong"""
+        """
+        Generate detailed explanation WITH behavioral grounding
 
-        system_prompt = """You are a patient tutor explaining mistakes. Analyze WHY the student got the question wrong, not just what the right answer is."""
+        ANTI-HALLUCINATION MEASURES:
+        - Requires source context
+        - Includes behavioral signals
+        - Must cite specific paragraphs
+        """
+
+        # Build behavioral insight
+        behavioral_note = ""
+        if behavioral_context:
+            time_spent = behavioral_context.get("time_spent", 0)
+            skipped = behavioral_context.get("skipped", False)
+            hesitation = behavioral_context.get("hesitation_count", 0)
+
+            if skipped:
+                behavioral_note = f"\n\nBehavioral note: Student skipped this question after {time_spent}s, suggesting possible avoidance or uncertainty."
+            elif time_spent < 20:
+                behavioral_note = f"\n\nBehavioral note: Student answered quickly ({time_spent}s), possibly guessing."
+            elif time_spent > 60:
+                behavioral_note = f"\n\nBehavioral note: Student spent {time_spent}s and hesitated {hesitation} times, indicating confusion."
+
+        system_prompt = """You are a patient tutor explaining mistakes.
+
+CRITICAL RULES:
+1. Base explanation ONLY on the provided context
+2. Cite specific paragraphs from context
+3. Consider the student's behavior (time, hesitation, etc)
+4. DO NOT hallucinate information not in the context
+5. If context is insufficient, acknowledge it"""
 
         user_prompt = f"""
 Question: {question}
 
 Student's Answer: {user_answer}
 Correct Answer: {correct_answer}
+{behavioral_note}
 
-Context from study material:
+Source Context from Document:
 {context}
 
-Provide a detailed explanation in JSON format:
+Provide explanation in JSON format:
 {{
-  "why_wrong": "Explain why the student's reasoning was flawed",
-  "concept_explanation": "Explain the underlying concept clearly",
-  "common_mistake": "Explain if this is a common misconception"
+  "source_paragraph": "EXACT quote from context that answers this question",
+  "section_reference": "Which section/paragraph this came from",
+  "why_wrong": "Why student's reasoning was flawed (considering their behavior)",
+  "concept_explanation": "Explain concept using ONLY information from context",
+  "common_mistake": "If this is a common misconception",
+  "behavioral_insight": "What their time/hesitation suggests about their understanding"
 }}
+
+CRITICAL: Quote source_paragraph EXACTLY from context. Do not invent.
 
 Return ONLY valid JSON.
 """
@@ -238,12 +273,22 @@ Return ONLY valid JSON.
             response = response.strip()
 
             explanation = json.loads(response)
+
+            # Ensure required fields exist
+            explanation.setdefault("source_paragraph", context[:200] + "...")
+            explanation.setdefault("section_reference", "Source material")
+            explanation.setdefault("behavioral_insight", "Based on your response pattern")
+
             return explanation
         except Exception as e:
+            # Fallback with grounding
             return {
+                "source_paragraph": context[:200] + "...",
+                "section_reference": "Source material",
                 "why_wrong": f"Your answer '{user_answer}' is incorrect.",
-                "concept_explanation": f"The correct answer is '{correct_answer}'.",
-                "common_mistake": "Review the concept carefully."
+                "concept_explanation": f"The correct answer is '{correct_answer}'. Review the source context.",
+                "common_mistake": "Review the concept carefully.",
+                "behavioral_insight": behavioral_note if behavioral_note else "N/A"
             }
 
     async def close(self):

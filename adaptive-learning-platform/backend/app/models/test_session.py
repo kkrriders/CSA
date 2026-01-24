@@ -35,17 +35,19 @@ class AnswerStatus(str, Enum):
 
 
 class QuestionAnswer(BaseModel):
+    """Raw behavioral signals - NO interpretations"""
     question_id: str
     user_answer: Optional[str] = None
     is_correct: Optional[bool] = None
-    time_taken: int = 0  # seconds
+    time_taken: int = 0  # seconds - RAW SIGNAL
     status: AnswerStatus = AnswerStatus.NOT_ATTEMPTED
-    marked_tricky: bool = False
-    marked_review: bool = False
+    marked_tricky: bool = False  # RAW SIGNAL - user explicitly marked
+    marked_review: bool = False  # RAW SIGNAL
     answered_at: Optional[datetime] = None
-    # AI pattern detection fields
-    answer_speed: Optional[str] = None  # fast, medium, slow
-    confidence_signal: Optional[str] = None  # guessed, confused, confident
+    # Additional raw signals
+    changed_answer: bool = False  # Did user change their answer?
+    hesitation_count: int = 0  # How many times they changed before submitting
+    time_to_first_answer: Optional[int] = None  # Time until first option selected
 
 
 class TestConfig(BaseModel):

@@ -44,15 +44,52 @@ function TestConfigureContent() {
 
   const handleStartTest = async () => {
     setLoading(true);
+    const loadingToast = toast.loading('Generating questions...');
+
     try {
-      // Generate questions if needed
+      // Generate questions
       await api.generateQuestions({
         document_id: documentId!,
         num_questions: config.num_questions,
         question_types: config.question_types,
       });
 
+      // Wait for questions to be generated (poll every 3 seconds, max 60 seconds)
+      let questionsReady = false;
+      let attempts = 0;
+      const maxAttempts = 20;
+
+      // Initial wait to let generation start
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      while (!questionsReady && attempts < maxAttempts) {
+        try {
+          const questions = await api.getQuestionsForDocument(documentId!);
+          console.log(`Polling: ${questions.length}/${config.num_questions} questions ready`);
+
+          if (questions.length >= config.num_questions) {
+            questionsReady = true;
+            toast.success('Questions generated!', { id: loadingToast });
+          } else {
+            toast.loading(`Generating questions... ${questions.length}/${config.num_questions}`, { id: loadingToast });
+            await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds before next check
+          }
+        } catch (error) {
+          console.error('Error checking questions:', error);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+
+        attempts++;
+      }
+
+      if (!questionsReady) {
+        toast.error('Question generation timed out. Please refresh and try again.', { id: loadingToast });
+        setLoading(false);
+        return;
+      }
+
       // Start test session
+      toast.loading('Starting test...', { id: loadingToast });
       const session = await api.startTest(documentId!, {
         total_questions: config.num_questions,
         time_per_question: config.time_per_question,
@@ -60,9 +97,10 @@ function TestConfigureContent() {
         difficulty_levels: config.difficulty_levels.length > 0 ? config.difficulty_levels : undefined,
       });
 
+      toast.success('Test started!', { id: loadingToast });
       router.push(`/test/${session._id}`);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to start test');
+      toast.error(error.response?.data?.detail || 'Failed to start test', { id: loadingToast });
     } finally {
       setLoading(false);
     }

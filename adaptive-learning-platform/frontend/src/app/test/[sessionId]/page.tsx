@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Flag, Loader2 } from 'lucide-react';
+import { ChevronRight, Flag, Loader2, Keyboard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import type { TestSession, Question, QuestionAnswer } from '@/types';
@@ -25,6 +25,11 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
   const [markedReview, setMarkedReview] = useState<Set<string>>(new Set());
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [timeRemaining, setTimeRemaining] = useState<number>(90);
+  const [endingEarly, setEndingEarly] = useState(false);
+
+  // New UI states
+  const [confidence, setConfidence] = useState<number>(50);
+  const [flagReason, setFlagReason] = useState<string>('Needs Review');
 
   // Load session and initial question
   useEffect(() => {
@@ -55,7 +60,9 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
       setLoading(true);
       const question = await api.getCurrentQuestion(sessionId);
       setCurrentQuestion(question);
-      setCurrentAnswer(''); 
+      setCurrentAnswer('');
+      setConfidence(50);
+      setFlagReason('Needs Review');
       setStartTime(Date.now());
       setTimeRemaining(session?.config.time_per_question || 90);
     } catch (error) {
@@ -67,14 +74,14 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
     }
   };
 
-  const handleSubmitAnswer = async () => {
+  const handleSubmitAnswer = useCallback(async () => {
     if (!currentQuestion || !session || submitting) return;
 
     setSubmitting(true);
-    const timeTaken = Math.min(
+    const timeTaken = Math.floor(Math.min(
       (Date.now() - startTime) / 1000,
       session.config.time_per_question
-    );
+    ));
 
     try {
       const response = await api.submitAnswer(
@@ -91,7 +98,7 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
         user_answer: currentAnswer,
         status: response.is_correct ? 'correct' : 'wrong',
         time_taken: timeTaken,
-        marked_tricky: false,
+        marked_tricky: flagReason === 'Tricky',
         marked_review: markedReview.has(currentQuestion._id)
       });
       setAnswers(newAnswers);
@@ -109,7 +116,7 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [currentQuestion, session, submitting, startTime, sessionId, currentAnswer, answers, markedReview, router, flagReason, confidence]);
 
   const handleMarkReview = () => {
     if (!currentQuestion) return;
@@ -133,12 +140,48 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
     }
   }, [submitting, handleSubmitAnswer]);
 
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (submitting || !currentQuestion) return;
+
+      // Number keys 1-4 for MCQ options
+      if (currentQuestion.question_type === 'mcq' && currentQuestion.options) {
+        if (['1', '2', '3', '4'].includes(e.key)) {
+          const index = parseInt(e.key) - 1;
+          if (index < currentQuestion.options.length) {
+            setCurrentAnswer(currentQuestion.options[index].text);
+          }
+        }
+      }
+
+      // Enter to submit
+      if (e.key === 'Enter' && !e.shiftKey) {
+        handleSubmitAnswer();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentQuestion, submitting, handleSubmitAnswer]);
+
   if (loading && !currentQuestion) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading question...</p>
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Loading question...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (endingEarly) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 transition-colors">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Ending test and analyzing performance...</p>
         </div>
       </div>
     );
@@ -147,12 +190,12 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
   if (!session || !currentQuestion) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b sticky top-0 z-10">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+      <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 sticky top-0 z-10 transition-colors duration-200">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <h1 className="font-bold text-xl">Test in Progress</h1>
-            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+            <h1 className="font-bold text-xl dark:text-white">Test in Progress</h1>
+            <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium">
               Q{session.current_question_index + 1} of {session.config.total_questions}
             </span>
           </div>
@@ -171,12 +214,17 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
               onMarkReview={handleMarkReview}
               isMarkedReview={markedReview.has(currentQuestion._id)}
               questionNumber={session.current_question_index + 1}
+              confidence={confidence}
+              onConfidenceChange={setConfidence}
+              flagReason={flagReason}
+              onFlagReasonChange={setFlagReason}
             />
 
             <div className="mt-8 flex justify-between items-center">
-              <p className="text-sm text-gray-500 italic">
-                Note: You cannot go back once you submit.
-              </p>
+              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <Keyboard className="w-4 h-4" />
+                <span className="hidden sm:inline">Press <kbd className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">1</kbd>-<kbd className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">4</kbd> to select, <kbd className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">Enter</kbd> to submit</span>
+              </div>
               <button
                 onClick={handleSubmitAnswer}
                 disabled={submitting}
@@ -201,9 +249,16 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
               currentQuestionIndex={session.current_question_index}
               answers={answers}
               onQuestionSelect={() => toast('Navigation is strictly one-way')}
-              onSubmit={() => {
+              onSubmit={async () => {
                 if (confirm('Finish test early? Remaining questions will be marked as skipped.')) {
-                  router.push(`/test/results/${sessionId}`);
+                  setEndingEarly(true);
+                  try {
+                    await api.finishTestEarly(sessionId);
+                    router.push(`/test/results/${sessionId}`);
+                  } catch (error) {
+                    toast.error('Failed to end test early');
+                    setEndingEarly(false);
+                  }
                 }
               }}
             />

@@ -19,6 +19,7 @@ from app.models.test_session import (
     AnswerStatus
 )
 from app.models.question import QuestionResponse, QuestionWithAnswer
+from app.services.question_stats_service import QuestionStatsService
 
 router = APIRouter()
 
@@ -227,6 +228,14 @@ async def submit_answer(
 
     is_correct = answer_data.user_answer.strip().lower() == question["correct_answer"].strip().lower()
 
+    # Update empirical difficulty statistics
+    await QuestionStatsService.update_question_stats(
+        question_id=answer_data.question_id,
+        correct=is_correct,
+        time_taken=answer_data.time_taken,
+        db=db
+    )
+
     # Update answer in session
     answer_update = {
         "question_id": answer_data.question_id,
@@ -234,7 +243,10 @@ async def submit_answer(
         "is_correct": is_correct,
         "time_taken": answer_data.time_taken,
         "status": AnswerStatus.CORRECT if is_correct else AnswerStatus.WRONG,
-        "answered_at": datetime.utcnow()
+        "answered_at": datetime.utcnow(),
+        # Initialize new behavioral fields
+        "changed_answer": False,  # TODO: Track in frontend
+        "hesitation_count": 0  # TODO: Track in frontend
     }
 
     session["answers"][current_index] = answer_update
@@ -296,6 +308,50 @@ async def mark_question(
     await db.test_sessions.update_one(
         {"_id": ObjectId(session_id)},
         {"$set": {"answers": session["answers"]}}
+    )
+
+    return {"status": "success"}
+
+
+@router.post("/{session_id}/finish-early", status_code=status.HTTP_200_OK)
+async def finish_test_early(
+    session_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db=Depends(get_database)
+):
+    """Finish test early and mark remaining questions as skipped"""
+
+    session = await db.test_sessions.find_one({
+        "_id": ObjectId(session_id),
+        "user_id": ObjectId(user_id)
+    })
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Test session not found"
+        )
+
+    if session["status"] == TestStatus.COMPLETED:
+        return {"status": "already_completed"}
+
+    # Mark all remaining questions as skipped
+    current_index = session["current_question_index"]
+    answers = session["answers"]
+
+    for i in range(current_index, len(answers)):
+        if answers[i]["status"] == AnswerStatus.NOT_ATTEMPTED:
+            answers[i]["status"] = AnswerStatus.SKIPPED
+            answers[i]["answered_at"] = datetime.utcnow()
+
+    # Mark test as completed
+    await db.test_sessions.update_one(
+        {"_id": ObjectId(session_id)},
+        {"$set": {
+            "status": TestStatus.COMPLETED,
+            "completed_at": datetime.utcnow(),
+            "answers": answers
+        }}
     )
 
     return {"status": "success"}

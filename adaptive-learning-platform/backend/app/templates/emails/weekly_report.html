@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #059669; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 5px 5px; }
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+        .stat-card { background: white; padding: 20px; border-radius: 5px; text-align: center; }
+        .stat-value { font-size: 32px; font-weight: bold; color: #059669; }
+        .stat-label { color: #6b7280; font-size: 14px; }
+        .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Your Weekly Progress</h1>
+            <p>{{ week_start }} - {{ week_end }}</p>
+        </div>
+        <div class="content">
+            <h2>Hi {{ user_name }},</h2>
+            <p>Here's a summary of your learning this week:</p>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value">{{ sessions_completed }}</div>
+                    <div class="stat-label">Tests Completed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ total_questions }}</div>
+                    <div class="stat-label">Questions Answered</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ total_correct }}</div>
+                    <div class="stat-label">Correct Answers</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ average_score }}%</div>
+                    <div class="stat-label">Average Score</div>
+                </div>
+            </div>
+
+            <p style="margin-top: 30px;">
+                {% if average_score >= 80 %}
+                Excellent work! You're mastering the material. Keep up the great effort!
+                {% elif average_score >= 60 %}
+                Good progress! Focus on reviewing your weak areas to improve further.
+                {% else %}
+                Keep practicing! Consistent effort will lead to improvement.
+                {% endif %}
+            </p>
+        </div>
+        <div class="footer">
+            <p>Adaptive Learning Platform</p>
+            <p>Weekly reports are sent every Monday.</p>
+        </div>
+    </div>
+</body>
+</html>

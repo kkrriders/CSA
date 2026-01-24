@@ -190,7 +190,86 @@ export interface AIExplanation {
   question_id: string;
   user_answer: string;
   correct_answer: string;
+  // Grounding - NO HALLUCINATION
+  source_paragraph: string;  // Exact quote from document
+  section_reference: string;  // Section citation
+  // Explanation WITH behavioral context
   why_wrong: string;
   concept_explanation: string;
   common_mistake: string;
+  behavioral_insight: string;  // What time/hesitation suggests
+}
+
+// ============================================================
+// WORLD-CLASS FEATURES
+// ============================================================
+
+// 1. Learning Velocity
+export interface LearningVelocity {
+  topic: string;
+  sessions_analyzed: number;
+  mastery_trajectory: number[];  // [0.3, 0.5, 0.7, 0.8]
+  velocity: number;  // Mastery gain per session
+  acceleration: number;  // Is velocity increasing?
+  sessions_to_mastery: number | null;  // Predicted sessions to 90%
+  comparative_rank: string | null;  // "3× faster than Transformers"
+}
+
+// 2. Forgetting Curve
+export interface ForgettingCurveData {
+  topic: string;
+  peak_mastery: number;
+  peak_date: string;
+  current_mastery: number;
+  days_since_peak: number;
+  decay_rate: number;  // Per day
+  half_life_days: number | null;  // Days until mastery halves
+  needs_review: boolean;
+}
+
+// 3. Exam Readiness Score
+export interface ExamReadinessScore {
+  overall_score: number;  // 0-100: "You are 72% ready"
+
+  // Components (weighted)
+  mastery_score: number;  // 40% weight
+  consistency_score: number;  // 25% weight
+  confidence_score: number;  // 20% weight
+  coverage_score: number;  // 15% weight
+
+  // Breakdown
+  strong_topics: string[];  // Mastery > 80%
+  weak_topics: string[];  // Mastery < 50%
+  inconsistent_topics: string[];  // High variance
+
+  // Actionable
+  estimated_study_hours: number;  // To reach 90%
+  priority_actions: string[];  // Specific recommendations
+  readiness_level: string;  // "Ready", "Almost Ready", "Needs Work"
+}
+
+// 4. Behavior Fingerprint
+export interface BehaviorFingerprint {
+  user_id: string;
+
+  // Core traits (0-1 scale)
+  risk_taking: number;  // Answers fast even when uncertain
+  perfectionism: number;  // Slow, changes answers, marks tricky
+  skimming: number;  // Fast, skips hard questions
+  grinding: number;  // Slow but thorough, high accuracy
+
+  // Detailed metrics
+  confidence_calibration: number;  // Confident when correct?
+  speed_accuracy_tradeoff: number;  // -1 (slow accurate) to +1 (fast sloppy)
+  difficulty_seeking: number;  // Avoid or embrace hard questions?
+  consistency: number;  // Stable performance?
+
+  // Personality
+  primary_trait: string;  // "Risk-taker", "Perfectionist", "Skimmer", "Grinder"
+  secondary_trait: string | null;
+
+  // Coaching
+  strengths: string[];
+  growth_areas: string[];
+  optimal_study_strategy: string;
 }

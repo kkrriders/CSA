@@ -32,11 +32,20 @@ export default function Timer({ seconds, onTimeUp }: TimerProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const isLowTime = timeLeft < 60;
+
   return (
-    <div className={`flex items-center gap-2 font-mono text-xl font-bold ${
-      timeLeft < 60 ? 'text-red-600' : 'text-blue-600'
-    }`}>
-      <Clock className="w-5 h-5" />
+    <div 
+      className={`flex items-center gap-2 font-mono text-xl font-bold transition-colors duration-300 ${
+        isLowTime 
+          ? 'text-red-600 dark:text-red-400 animate-pulse' 
+          : 'text-blue-600 dark:text-blue-400'
+      }`}
+      role="timer"
+      aria-live={isLowTime ? 'assertive' : 'off'}
+    >
+      <Clock className="w-5 h-5" aria-hidden="true" />
+      <span className="sr-only">Time remaining: </span>
       {formatTime(timeLeft)}
     </div>
   );

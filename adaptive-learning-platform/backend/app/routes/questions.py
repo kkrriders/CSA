@@ -34,13 +34,19 @@ async def generate_questions_background(
     llm_service = LLMService()
 
     try:
+        print(f"[Question Gen] Starting generation for document {document_id}")
+
         # Get document
         document = await db.documents.find_one({"_id": ObjectId(document_id)})
         if not document:
+            print(f"[Question Gen] ERROR: Document {document_id} not found")
             return
 
         sections = document.get("sections", [])
+        print(f"[Question Gen] Found {len(sections)} sections")
+
         if not sections:
+            print(f"[Question Gen] ERROR: No sections in document")
             return
 
         # Filter sections by topics if specified
@@ -55,67 +61,89 @@ async def generate_questions_background(
 
         generated_questions = []
 
-        for section in sections[:num_questions]:  # Limit sections
-            section_context = section.get("content", "")
-            section_topic = section.get("title", "General")
+        # Keep generating until we have enough questions
+        while len(generated_questions) < num_questions:
+            # Cycle through sections if we need more questions than sections
+            for section in sections:
+                if len(generated_questions) >= num_questions:
+                    break
 
-            # Determine difficulty for this question
-            if difficulty_distribution:
-                available_difficulties = [
-                    k for k, v in difficulty_distribution.items() if v > 0
-                ]
-                if available_difficulties:
-                    difficulty = random.choice(available_difficulties)
-                    difficulty_distribution[difficulty] -= 1
+                section_context = section.get("content", "")
+                section_topic = section.get("title", "General")
+
+                # Determine difficulty for this question
+                if difficulty_distribution:
+                    available_difficulties = [
+                        k for k, v in difficulty_distribution.items() if v > 0
+                    ]
+                    if available_difficulties:
+                        difficulty = random.choice(available_difficulties)
+                        difficulty_distribution[difficulty] -= 1
+                    else:
+                        difficulty = "medium"
                 else:
-                    difficulty = "medium"
-            else:
-                difficulty = random.choice(["easy", "medium", "hard", "tricky"])
+                    difficulty = random.choice(["easy", "medium", "hard", "tricky"])
 
-            # Determine question type
-            question_type = random.choice(question_types)
+                # Determine question type
+                question_type = random.choice(question_types)
 
-            # Generate questions using LLM
-            try:
-                questions = await llm_service.generate_questions_from_context(
-                    context=section_context[:2000],  # Limit context size
-                    topic=section_topic,
-                    num_questions=1,
-                    difficulty=difficulty,
-                    question_type=question_type
-                )
+                # Generate questions using LLM
+                try:
+                    print(f"[Question Gen] Generating question {len(generated_questions) + 1}/{num_questions} for section: {section_topic}")
 
-                for q in questions:
-                    question_doc = {
-                        "document_id": ObjectId(document_id),
-                        "user_id": ObjectId(user_id),
-                        "question_text": q["question_text"],
-                        "question_type": q["question_type"],
-                        "difficulty": q["difficulty"],
-                        "topic": q["topic"],
-                        "section_title": section.get("title"),
-                        "options": q.get("options", []),
-                        "correct_answer": q["correct_answer"],
-                        "explanation": q["explanation"],
-                        "source_context": q.get("source_context", section_context[:500]),
-                        "created_at": datetime.utcnow()
-                    }
+                    questions = await llm_service.generate_questions_from_context(
+                        context=section_context[:2000],  # Limit context size
+                        topic=section_topic,
+                        num_questions=1,
+                        difficulty=difficulty,
+                        question_type=question_type
+                    )
 
-                    result = await db.questions.insert_one(question_doc)
-                    generated_questions.append(str(result.inserted_id))
+                    print(f"[Question Gen] LLM returned {len(questions)} questions")
 
-                    if len(generated_questions) >= num_questions:
-                        break
+                    for q in questions:
+                        # Ensure question_type is stored as string value, not enum
+                        q_type = q["question_type"]
+                        if hasattr(q_type, 'value'):
+                            q_type = q_type.value
+                        elif isinstance(q_type, str) and '.' in q_type:
+                            # Handle "QuestionType.MCQ" format
+                            q_type = q_type.split('.')[-1].lower()
 
-            except Exception as e:
-                print(f"Error generating question for section {section_topic}: {e}")
-                continue
+                        question_doc = {
+                            "document_id": ObjectId(document_id),
+                            "user_id": ObjectId(user_id),
+                            "question_text": q["question_text"],
+                            "question_type": q_type,
+                            "difficulty": q["difficulty"],
+                            "topic": q["topic"],
+                            "section_title": section.get("title"),
+                            "options": q.get("options", []),
+                            "correct_answer": q["correct_answer"],
+                            "explanation": q["explanation"],
+                            "source_context": q.get("source_context", section_context[:500]),
+                            "created_at": datetime.utcnow()
+                        }
 
-            if len(generated_questions) >= num_questions:
-                break
+                        result = await db.questions.insert_one(question_doc)
+                        generated_questions.append(str(result.inserted_id))
+                        print(f"[Question Gen] Saved question {len(generated_questions)}/{num_questions}")
+
+                        if len(generated_questions) >= num_questions:
+                            break
+
+                except Exception as e:
+                    print(f"[Question Gen] ERROR for section {section_topic}: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    continue
+
+        print(f"[Question Gen] COMPLETED: Generated {len(generated_questions)} questions total")
 
     except Exception as e:
-        print(f"Error in question generation background task: {e}")
+        print(f"[Question Gen] FATAL ERROR: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         await llm_service.close()
 

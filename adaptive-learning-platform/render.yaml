@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: adaptive-learning-backend
+    runtime: python
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: adaptive-learning-platform/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: CARGO_HOME
+        value: /opt/render/project/.cargo
+      - key: MONGODB_URI
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: LLM_PROVIDER
+        value: openrouter
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: mistralai/mistral-7b-instruct
+      - key: CORS_ORIGINS
+        value: http://localhost:3000,https://csa-xg91.vercel.app
