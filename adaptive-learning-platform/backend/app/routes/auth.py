@@ -26,6 +26,7 @@ async def register(user_data: UserCreate, db=Depends(get_database)):
     # Create user document
     user_doc = {
         "email": user_data.email,
+        "username": user_data.email,  # Use email as username
         "name": user_data.name,
         "password_hash": get_password_hash(user_data.password),
         "created_at": datetime.utcnow(),
