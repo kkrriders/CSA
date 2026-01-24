@@ -66,12 +66,14 @@ export default function TestResultsPage({ params }: { params: { sessionId: strin
     }
 
     setExplainingId(questionId);
+    const toastId = toast.loading('Asking AI...');
     try {
       const explanation = await api.explainWrongAnswer(sessionId, questionId);
       setExplanations(prev => ({ ...prev, [questionId]: explanation }));
       setExpandedQuestion(questionId);
+      toast.dismiss(toastId);
     } catch (error) {
-      toast.error('Failed to get AI explanation');
+      toast.error('Failed to get AI explanation', { id: toastId });
     } finally {
       setExplainingId(null);
     }
@@ -92,11 +94,11 @@ export default function TestResultsPage({ params }: { params: { sessionId: strin
 
   // Prepare data for analytics charts
   const readinessData = [
-    { subject: 'Knowledge', A: mastery.length > 0 ? mastery.reduce((acc, curr) => acc + curr.mastery_percentage, 0) / mastery.length * 1.5 : 100, fullMark: 150 },
-    { subject: 'Speed', A: Math.min(150, (score.total_questions / (score.time_spent || 1)) * 3000), fullMark: 150 }, // Rough heuristic
+    { subject: 'Knowledge', A: mastery.length > 0 ? mastery.reduce((acc, curr) => acc + curr.mastery_percentage, 0) / mastery.length * 1.5 : 0, fullMark: 150 },
+    { subject: 'Speed', A: score.time_spent > 0 ? Math.min(150, (score.total_questions / score.time_spent) * 3000) : 0, fullMark: 150 },
     { subject: 'Accuracy', A: score.percentage * 1.5, fullMark: 150 },
-    { subject: 'Consistency', A: 110, fullMark: 150 }, // Placeholder
-    { subject: 'Endurance', A: 120, fullMark: 150 }, // Placeholder
+    { subject: 'Consistency', A: 0, fullMark: 150 }, // Real metric requires history
+    { subject: 'Endurance', A: score.total_questions > 5 ? 100 : 50, fullMark: 150 }, // Simple heuristic
     { subject: 'Recall', A: score.percentage * 1.2, fullMark: 150 },
   ];
 

@@ -73,6 +73,49 @@ async def create_review_session(
     }
 
 
+@router.get("/sessions/{session_id}")
+async def get_review_session(
+    session_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db=Depends(get_database)
+):
+    """Get a review session details."""
+    session = await db.review_sessions.find_one({
+        "_id": ObjectId(session_id),
+        "user_id": user_id
+    })
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Review session not found"
+        )
+
+    # Fetch the actual review items
+    review_ids = [ObjectId(rid) for rid in session["review_ids"]]
+    reviews = await db.reviews.find({"_id": {"$in": review_ids}}).to_list(length=100)
+    
+    # We also need the questions associated with these reviews to show the text
+    # The review object should have 'question_id'
+    question_ids = [ObjectId(r["question_id"]) for r in reviews]
+    questions = await db.questions.find({"_id": {"$in": question_ids}}).to_list(length=100)
+    question_map = {str(q["_id"]): q for q in questions}
+
+    # Combine review data with question data
+    full_reviews = []
+    for r in reviews:
+        q_data = question_map.get(r["question_id"])
+        if q_data:
+            r["question"] = q_data
+            full_reviews.append(r)
+
+    # Convert ObjectId to str for JSON serialization
+    session["_id"] = str(session["_id"])
+    session["reviews"] = [{**r, "_id": str(r["_id"]), "question_id": str(r["question_id"]), "question": {**r["question"], "_id": str(r["question"]["_id"])}} for r in full_reviews]
+
+    return session
+
+
 @router.post("/sessions/{session_id}/reviews/{review_id}")
 async def submit_review_response(
     session_id: str,

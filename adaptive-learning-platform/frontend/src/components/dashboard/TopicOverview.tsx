@@ -2,13 +2,21 @@
 
 import React from 'react';
 
-export default function TopicOverview() {
-  const topics = [
-    { name: 'Computer Vision', mastery: 85, count: 120 },
-    { name: 'NLP', mastery: 62, count: 85 },
-    { name: 'Reinforcement Learning', mastery: 45, count: 40 },
-    { name: 'Optimization', mastery: 92, count: 200 },
-  ];
+export interface TopicStats {
+  name: string;
+  mastery: number;
+  count: number;
+}
+
+export default function TopicOverview({ topics }: { topics?: TopicStats[] }) {
+  if (!topics || topics.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
+        <h3 className="font-bold text-gray-900 dark:text-white mb-4">Topic Performance</h3>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">No topic data available.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">

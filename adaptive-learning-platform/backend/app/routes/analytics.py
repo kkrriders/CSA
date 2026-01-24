@@ -396,6 +396,90 @@ async def get_overall_performance(
     }
 
 
+@router.get("/user/dashboard-stats")
+async def get_user_dashboard_stats(
+    user_id: str = Depends(get_current_user_id),
+    db=Depends(get_database)
+):
+    """Get aggregated dashboard stats for the user."""
+    
+    # 1. Total Questions Answered
+    # Aggregate from all completed sessions
+    pipeline = [
+        {"$match": {"user_id": ObjectId(user_id), "status": "completed"}},
+        {"$unwind": "$answers"},
+        {"$count": "total_questions"}
+    ]
+    result_questions = await db.test_sessions.aggregate(pipeline).to_list(length=1)
+    total_questions = result_questions[0]["total_questions"] if result_questions else 0
+
+    # 2. Total Study Time
+    # Sum time_taken from answers
+    pipeline_time = [
+        {"$match": {"user_id": ObjectId(user_id), "status": "completed"}},
+        {"$unwind": "$answers"},
+        {"$group": {"_id": None, "total_time": {"$sum": "$answers.time_taken"}}}
+    ]
+    result_time = await db.test_sessions.aggregate(pipeline_time).to_list(length=1)
+    total_time_seconds = result_time[0]["total_time"] if result_time else 0
+    
+    # Format time
+    hours = int(total_time_seconds // 3600)
+    minutes = int((total_time_seconds % 3600) // 60)
+    study_time_str = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+
+    # 3. Average Mastery (Average Accuracy for now)
+    pipeline_accuracy = [
+        {"$match": {"user_id": ObjectId(user_id), "status": "completed"}},
+        {"$unwind": "$answers"},
+        {"$group": {
+            "_id": None,
+            "total": {"$sum": 1},
+            "correct": {"$sum": {"$cond": [{"$eq": ["$answers.status", "correct"]}, 1, 0]}}
+        }}
+    ]
+    result_acc = await db.test_sessions.aggregate(pipeline_accuracy).to_list(length=1)
+    avg_mastery = 0
+    if result_acc and result_acc[0]["total"] > 0:
+        avg_mastery = round((result_acc[0]["correct"] / result_acc[0]["total"]) * 100)
+
+    # 4. Current Streak
+    # Calculate consecutive days with activity
+    sessions = await db.test_sessions.find(
+        {"user_id": ObjectId(user_id), "status": "completed"},
+        {"completed_at": 1}
+    ).sort("completed_at", -1).to_list(length=100)
+    
+    streak = 0
+    if sessions:
+        last_date = sessions[0]["completed_at"].date()
+        from datetime import date, timedelta, datetime
+        today = datetime.utcnow().date()
+        
+        # If last session was today or yesterday, streak is alive
+        if last_date == today or last_date == today - timedelta(days=1):
+            streak = 1
+            current_check = last_date
+            for i in range(1, len(sessions)):
+                sess_date = sessions[i]["completed_at"].date()
+                if sess_date == current_check:
+                    continue
+                if sess_date == current_check - timedelta(days=1):
+                    streak += 1
+                    current_check = sess_date
+                else:
+                    break
+        else:
+            streak = 0
+
+    return {
+        "total_questions": total_questions,
+        "study_time": study_time_str,
+        "avg_mastery": f"{avg_mastery}%",
+        "streak": f"{streak} Days"
+    }
+
+
 # ============================================================
 # WORLD-CLASS FEATURES
 # ============================================================

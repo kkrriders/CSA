@@ -45,12 +45,8 @@ export default function ReviewsPage() {
     try {
       const session = await api.createReviewSession();
       if (session && session.session_id) {
-        // Navigate to a review session page (we need to build this or reuse exam page)
-        // For now, let's reuse the exam page structure or a new route
-        // Assuming we have a route or just reuse test page with a flag
-        // router.push(`/reviews/session/${session.session_id}`); 
-        // We haven't built /reviews/session/[id] yet, so let's mock it or redirect to test
-        toast.success("Review session started (Mock navigation)");
+        toast.success("Starting review session...");
+        router.push(`/reviews/session/${session.session_id}`);
       }
     } catch (e) {
       toast.error("Failed to start session");

@@ -17,25 +17,24 @@ interface VelocityData {
   velocity: number;
 }
 
-const defaultData: VelocityData[] = [
-  { name: 'Week 1', velocity: 40 },
-  { name: 'Week 2', velocity: 55 },
-  { name: 'Week 3', velocity: 50 },
-  { name: 'Week 4', velocity: 70 },
-  { name: 'Week 5', velocity: 65 },
-  { name: 'Week 6', velocity: 85 },
-  { name: 'Week 7', velocity: 90 },
-];
-
 const LearningVelocityChart = ({ data }: { data?: VelocityData[] }) => {
-  const chartData = data || defaultData;
+  if (!data || data.length === 0) {
+    return (
+      <div className="w-full h-80 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">Learning Velocity</h3>
+          <p className="text-gray-500 dark:text-gray-400">No data available yet.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-80 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
       <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Learning Velocity</h3>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
-          data={chartData}
+          data={data}
           margin={{
             top: 5,
             right: 30,

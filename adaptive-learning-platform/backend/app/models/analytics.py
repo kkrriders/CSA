@@ -105,20 +105,30 @@ class TopicMastery(BaseModel):
     hard_wrong: int = 0
 
 
+class FailurePattern(str, Enum):
+    FAST_WRONG = "fast_wrong"
+    SLOW_WRONG = "slow_wrong"
+    EASY_WRONG = "easy_wrong"
+    TRICKY_WRONG = "tricky_wrong"
+    REPEATED_TOPIC = "repeated_topic"
+
+
 class WeaknessAnalysis(BaseModel):
     """Mathematical weakness analysis"""
     topic: str
-    mastery_score: float  # 0-1 from TopicMastery
+    mastery_score: float = 0.0  # 0-1 from TopicMastery
+    mastery_percentage: float = 0.0
 
     # Mathematical formula: weakness × exposure × confidence_penalty
-    weakness_score: float  # 1 - mastery_score
-    exposure_count: int  # How many questions seen
-    confidence_penalty: float  # Based on hesitation, marking tricky
+    weakness_score: float = 0.0 # 1 - mastery_score
+    exposure_count: int = 0 # How many questions seen
+    confidence_penalty: float = 0.0 # Based on hesitation, marking tricky
 
     # Final priority = weakness × exposure × confidence_penalty
     priority_score: float  # Higher = more urgent
 
     question_ids: List[str]
+    failure_patterns: List[FailurePattern] = []
     cognitive_scores: List[CognitiveScores] = []  # Probabilistic states
     recommendation: str
 

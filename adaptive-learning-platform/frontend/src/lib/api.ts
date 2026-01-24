@@ -224,6 +224,11 @@ class APIClient {
     return data;
   }
 
+  async getReviewSession(sessionId: string): Promise<any> {
+    const { data } = await this.client.get(`/reviews/sessions/${sessionId}`);
+    return data;
+  }
+
   async submitReviewResponse(sessionId: string, reviewId: string, quality: number, timeTaken: number): Promise<any> {
     const { data } = await this.client.post(`/reviews/sessions/${sessionId}/reviews/${reviewId}`, {
       quality,
@@ -286,6 +291,11 @@ class APIClient {
 
   async getOverallPerformance(documentId: string): Promise<any> {
     const { data } = await this.client.get(`/analytics/document/${documentId}/overall-performance`);
+    return data;
+  }
+
+  async getUserDashboardStats(): Promise<any> {
+    const { data } = await this.client.get('/analytics/user/dashboard-stats');
     return data;
   }
 }

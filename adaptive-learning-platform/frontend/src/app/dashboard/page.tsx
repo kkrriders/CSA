@@ -8,9 +8,9 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import type { DocumentListItem } from '@/types';
 import StreakCounter from '@/components/dashboard/StreakCounter';
-import QuickStatsCards from '@/components/dashboard/QuickStatsCards';
+import QuickStatsCards, { DashboardStats } from '@/components/dashboard/QuickStatsCards';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
-import TopicOverview from '@/components/dashboard/TopicOverview';
+import TopicOverview, { TopicStats } from '@/components/dashboard/TopicOverview';
 import RecommendedActions from '@/components/dashboard/RecommendedActions';
 
 export default function DashboardPage() {
@@ -19,25 +19,47 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<DocumentListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [stats, setStats] = useState<DashboardStats | undefined>(undefined);
+  const [topics, setTopics] = useState<TopicStats[]>([]);
 
   useEffect(() => {
     if (!user) {
       router.push('/auth/login');
       return;
     }
-    loadDocuments();
-  }, [user]);
+    
+    async function loadDashboardData() {
+      try {
+        const [docs, dashboardStats, velocity] = await Promise.all([
+          api.getDocuments(),
+          api.getUserDashboardStats().catch(() => null),
+          api.getLearningVelocity().catch(() => ({ velocities: [] }))
+        ]);
+        
+        setDocuments(docs);
+        
+        if (dashboardStats) {
+          setStats(dashboardStats);
+        }
 
-  const loadDocuments = async () => {
-    try {
-      const docs = await api.getDocuments();
-      setDocuments(docs);
-    } catch (error) {
-      toast.error('Failed to load documents');
-    } finally {
-      setLoading(false);
+        if (velocity && velocity.velocities) {
+          const topicStats = velocity.velocities.map((v: any) => ({
+            name: v.topic,
+            mastery: Math.round((v.mastery_trajectory[v.mastery_trajectory.length - 1] || 0) * 100),
+            count: v.sessions_analyzed // Proxy for count, or just show sessions
+          }));
+          setTopics(topicStats);
+        }
+
+      } catch (error) {
+        toast.error('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
     }
-  };
+
+    loadDashboardData();
+  }, [user]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,7 +74,9 @@ export default function DashboardPage() {
     try {
       await api.uploadDocument(file);
       toast.success('Document uploaded! Processing...');
-      loadDocuments();
+      // Reload documents
+      const docs = await api.getDocuments();
+      setDocuments(docs);
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Upload failed');
     } finally {
@@ -66,7 +90,8 @@ export default function DashboardPage() {
     try {
       await api.deleteDocument(id);
       toast.success('Document deleted');
-      loadDocuments();
+      const docs = await api.getDocuments();
+      setDocuments(docs);
     } catch (error) {
       toast.error('Failed to delete document');
     }
@@ -85,18 +110,12 @@ export default function DashboardPage() {
           <p className="text-gray-600 dark:text-gray-400">Ready to continue your learning journey?</p>
         </div>
         <div className="w-full md:w-auto">
-          {/* We'll put StreakCounter in the sidebar on large screens, or here on mobile? 
-              Actually, let's just keep it in the sidebar for layout cleanliness, 
-              or maybe a small version here. 
-              Let's put QuickStats here or below.
-              The prompt plan was Top Row: Welcome + Streak.
-          */}
         </div>
       </div>
 
       {/* Stats Row */}
       <div className="mb-8">
-        <QuickStatsCards />
+        <QuickStatsCards stats={stats} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -190,9 +209,9 @@ export default function DashboardPage() {
 
         {/* Sidebar Column (Right) */}
         <div className="space-y-8">
-          <StreakCounter />
-          <TopicOverview />
-          <ActivityFeed />
+          <StreakCounter streak={stats?.streak} />
+          <TopicOverview topics={topics} />
+          <ActivityFeed items={[]} />
         </div>
       </div>
     </div>
