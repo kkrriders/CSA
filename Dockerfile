@@ -12,7 +12,7 @@ COPY adaptive-learning-platform/backend ./backend
 RUN pip install --upgrade pip setuptools wheel
 
 # Install python deps
-RUN pip install -r backend/requirements.txt
+RUN pip install -r backend/requirements-prod.txt
 
 # Start FastAPI
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
