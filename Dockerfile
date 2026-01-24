@@ -3,10 +3,12 @@ FROM python:3.11.9-slim
 # Force rebuild - updated 2026-01-24
 WORKDIR /app
 
-# Install system deps for pillow, pymongo, and SSL certificates for MongoDB
+# Install system deps for pillow, pymongo, and SSL libraries for MongoDB
 RUN apt-get update && apt-get install -y \
     gcc \
     ca-certificates \
+    libssl-dev \
+    openssl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy backend code
