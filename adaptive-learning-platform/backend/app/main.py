@@ -35,7 +35,7 @@ async def startup_event():
     # Create database indexes
     try:
         db = get_database()
-        if db:
+        if db is not None:
             await create_indexes(db)
     except Exception as e:
         print(f"Warning: Could not create indexes: {e}")
@@ -51,7 +51,7 @@ async def shutdown_event():
     print("👋 Adaptive Learning Platform API shutdown")
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def root():
     return {
         "message": "Adaptive Learning Platform API",
@@ -60,7 +60,7 @@ async def root():
     }
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
     return {"status": "healthy"}
 
