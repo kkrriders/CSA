@@ -28,14 +28,15 @@ app.add_middleware(
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
-    from app.core.database import get_database_client
+    from app.core.database import get_database
     await connect_to_mongo()
     await cache_manager.connect()
 
     # Create database indexes
     try:
-        db = await get_database_client()
-        await create_indexes(db)
+        db = get_database()
+        if db:
+            await create_indexes(db)
     except Exception as e:
         print(f"Warning: Could not create indexes: {e}")
 

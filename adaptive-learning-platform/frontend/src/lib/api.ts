@@ -15,6 +15,10 @@ import type {
   AdaptiveTargeting,
   AIExplanation,
   TopicMastery,
+  LearningVelocity,
+  ForgettingCurveData,
+  ExamReadinessScore,
+  BehaviorFingerprint,
 } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
@@ -175,6 +179,113 @@ class APIClient {
       session_id: sessionId,
       question_id: questionId,
     });
+    return data;
+  }
+
+  // Study Plan APIs
+  async createStudyPlan(request: any): Promise<any> {
+    const { data } = await this.client.post('/study-plans/generate', request);
+    return data;
+  }
+
+  async getStudyPlans(): Promise<any> {
+    const { data } = await this.client.get('/study-plans/');
+    return data;
+  }
+
+  async getStudyPlan(planId: string): Promise<any> {
+    const { data } = await this.client.get(`/study-plans/${planId}`);
+    return data;
+  }
+
+  async getNextStudySession(planId: string): Promise<any> {
+    const { data } = await this.client.get(`/study-plans/${planId}/next-session`);
+    return data;
+  }
+
+  async completeStudySession(planId: string, sessionNumber: number): Promise<any> {
+    const { data } = await this.client.post(`/study-plans/${planId}/complete-session/${sessionNumber}`);
+    return data;
+  }
+
+  async getStudyPlanProgress(planId: string): Promise<any> {
+    const { data } = await this.client.get(`/study-plans/${planId}/progress`);
+    return data;
+  }
+
+  // Reviews APIs
+  async getReviewQueue(documentId?: string): Promise<any> {
+    const { data } = await this.client.get('/reviews/queue', { params: { document_id: documentId } });
+    return data;
+  }
+
+  async createReviewSession(documentId?: string, maxReviews: number = 20): Promise<any> {
+    const { data } = await this.client.post('/reviews/sessions', null, { params: { document_id: documentId, max_reviews: maxReviews } });
+    return data;
+  }
+
+  async submitReviewResponse(sessionId: string, reviewId: string, quality: number, timeTaken: number): Promise<any> {
+    const { data } = await this.client.post(`/reviews/sessions/${sessionId}/reviews/${reviewId}`, {
+      quality,
+      time_taken: timeTaken
+    });
+    return data;
+  }
+
+  async completeReviewSession(sessionId: string): Promise<any> {
+    const { data } = await this.client.post(`/reviews/sessions/${sessionId}/complete`);
+    return data;
+  }
+
+  async getReviewSchedule(): Promise<any> {
+    const { data } = await this.client.get('/reviews/schedule');
+    return data;
+  }
+
+  // Notification APIs
+  async getNotificationPreferences(): Promise<any> {
+    const { data } = await this.client.get('/notifications/preferences');
+    return data;
+  }
+
+  async updateNotificationPreferences(preferences: any): Promise<any> {
+    const { data } = await this.client.put('/notifications/preferences', preferences);
+    return data;
+  }
+
+  async getNotificationHistory(limit: number = 50): Promise<any> {
+    const { data } = await this.client.get('/notifications/history', { params: { limit } });
+    return data;
+  }
+
+  // Extended Analytics APIs
+  async getLearningVelocity(): Promise<{ velocities: LearningVelocity[] }> {
+    const { data } = await this.client.get('/analytics/user/learning-velocity');
+    return data;
+  }
+
+  async getForgettingCurve(topic: string): Promise<ForgettingCurveData> {
+    const { data } = await this.client.get(`/analytics/user/topic/${topic}/forgetting-curve`);
+    return data;
+  }
+
+  async getExamReadiness(documentId: string): Promise<ExamReadinessScore> {
+    const { data } = await this.client.get(`/analytics/document/${documentId}/exam-readiness`);
+    return data;
+  }
+
+  async getBehaviorFingerprint(sessionId: string): Promise<BehaviorFingerprint> {
+    const { data } = await this.client.get(`/analytics/session/${sessionId}/behavior-fingerprint`);
+    return data;
+  }
+
+  async getAggregateBehaviorFingerprint(): Promise<BehaviorFingerprint> {
+    const { data } = await this.client.get('/analytics/user/behavior-fingerprint-aggregate');
+    return data;
+  }
+
+  async getOverallPerformance(documentId: string): Promise<any> {
+    const { data } = await this.client.get(`/analytics/document/${documentId}/overall-performance`);
     return data;
   }
 }

@@ -2,7 +2,13 @@
 Email service for sending notifications.
 """
 from typing import List, Dict
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
+try:
+    from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
+    FASTAPI_MAIL_AVAILABLE = True
+except ImportError:
+    FASTAPI_MAIL_AVAILABLE = False
+    print("Warning: fastapi-mail not installed. Email features disabled.")
+
 from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
 
@@ -11,18 +17,21 @@ from app.models.notification import EmailTemplate
 
 settings = get_settings()
 
-# Email configuration
-conf = ConnectionConfig(
-    MAIL_USERNAME=settings.get("MAIL_USERNAME", ""),
-    MAIL_PASSWORD=settings.get("MAIL_PASSWORD", ""),
-    MAIL_FROM=settings.get("MAIL_FROM", "noreply@adaptivelearning.com"),
-    MAIL_PORT=settings.get("MAIL_PORT", 587),
-    MAIL_SERVER=settings.get("MAIL_SERVER", "smtp.gmail.com"),
-    MAIL_STARTTLS=True,
-    MAIL_SSL_TLS=False,
-    USE_CREDENTIALS=True,
-    VALIDATE_CERTS=True
-)
+# Email configuration (only if fastapi-mail available)
+if FASTAPI_MAIL_AVAILABLE and settings.MAIL_USERNAME:
+    conf = ConnectionConfig(
+        MAIL_USERNAME=settings.MAIL_USERNAME,
+        MAIL_PASSWORD=settings.MAIL_PASSWORD,
+        MAIL_FROM=settings.MAIL_FROM,
+        MAIL_PORT=settings.MAIL_PORT,
+        MAIL_SERVER=settings.MAIL_SERVER,
+        MAIL_STARTTLS=True,
+        MAIL_SSL_TLS=False,
+        USE_CREDENTIALS=True,
+        VALIDATE_CERTS=True
+    )
+else:
+    conf = None
 
 # Jinja2 environment for templates
 templates_dir = Path(__file__).parent.parent / "templates" / "emails"
@@ -34,7 +43,12 @@ class EmailService:
     """Service for sending emails."""
 
     def __init__(self):
-        self.mail = FastMail(conf)
+        if FASTAPI_MAIL_AVAILABLE and conf:
+            self.mail = FastMail(conf)
+            self.enabled = True
+        else:
+            self.mail = None
+            self.enabled = False
         self.jinja_env = jinja_env
 
     async def send_email(
@@ -45,6 +59,10 @@ class EmailService:
         html: bool = True
     ) -> bool:
         """Send an email."""
+        if not self.enabled:
+            print(f"Email disabled. Would have sent: {subject} to {recipients}")
+            return False
+
         try:
             message = MessageSchema(
                 subject=subject,

@@ -12,7 +12,12 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-const data = [
+interface VelocityData {
+  name: string;
+  velocity: number;
+}
+
+const defaultData: VelocityData[] = [
   { name: 'Week 1', velocity: 40 },
   { name: 'Week 2', velocity: 55 },
   { name: 'Week 3', velocity: 50 },
@@ -22,13 +27,15 @@ const data = [
   { name: 'Week 7', velocity: 90 },
 ];
 
-const LearningVelocityChart = () => {
+const LearningVelocityChart = ({ data }: { data?: VelocityData[] }) => {
+  const chartData = data || defaultData;
+
   return (
     <div className="w-full h-80 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
       <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Learning Velocity</h3>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
-          data={data}
+          data={chartData}
           margin={{
             top: 5,
             right: 30,

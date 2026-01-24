@@ -1,0 +1,51 @@
+# Production dependencies (lighter for Render free tier)
+# Core FastAPI
+fastapi==0.109.0
+uvicorn==0.27.0
+python-multipart==0.0.6
+
+# Database
+pymongo==4.6.2
+motor==3.4.0
+
+# Configuration & Validation
+pydantic==2.5.3
+pydantic-settings==2.1.0
+python-dotenv==1.0.0
+
+# Authentication & Security
+PyJWT==2.8.0
+passlib==1.7.4
+pyotp==2.9.0
+
+# Document Processing
+PyPDF2==3.0.1
+markdown==3.5.1
+aiofiles==23.2.1
+
+# HTTP Client (for LLM calls)
+httpx==0.26.0
+
+# Caching & Rate Limiting
+redis==5.0.1
+slowapi==0.1.9
+
+# Email (lightweight)
+jinja2==3.1.3
+
+# Monitoring (lightweight)
+prometheus-client==0.19.0
+
+# WebSockets
+websockets==12.0
+
+# QR Code generation (lightweight)
+qrcode==7.4.2
+pillow==10.2.0
+
+# Note: Heavy packages removed for production:
+# - scikit-learn (ML features will use simpler algorithms)
+# - numpy (only needed for ML)
+# - fastapi-mail (using basic SMTP instead)
+# - pytest* (development only)
+# - faker (development only)

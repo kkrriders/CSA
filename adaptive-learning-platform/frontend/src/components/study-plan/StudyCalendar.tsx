@@ -3,15 +3,39 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function StudyCalendar() {
+interface CalendarSession {
+  date: string; // ISO date string
+  status: 'completed' | 'upcoming' | 'missed';
+}
+
+interface StudyCalendarProps {
+  sessions?: CalendarSession[];
+}
+
+export default function StudyCalendar({ sessions = [] }: StudyCalendarProps) {
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  // Mock data for a month view
-  const currentMonth = "February 2026";
-  const calendarDays = Array.from({ length: 28 }, (_, i) => ({
-    day: i + 1,
-    hasSession: [2, 5, 8, 12, 14, 15, 19, 22].includes(i + 1),
-    isToday: i + 1 === 24
-  }));
+  const today = new Date();
+  const currentMonth = today.toLocaleString('default', { month: 'long', year: 'numeric' });
+  
+  // Simple calendar logic for current month
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const startDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay();
+  
+  const calendarDays = Array.from({ length: daysInMonth }, (_, i) => {
+    const d = i + 1;
+    const dateStr = new Date(today.getFullYear(), today.getMonth(), d).toISOString().split('T')[0];
+    const session = sessions.find(s => s.date.startsWith(dateStr));
+    
+    return {
+      day: d,
+      hasSession: !!session,
+      isToday: d === today.getDate(),
+      status: session?.status
+    };
+  });
+
+  // Add empty slots for start of month
+  const emptySlots = Array.from({ length: startDay }, (_, i) => i);
 
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -30,6 +54,8 @@ export default function StudyCalendar() {
       </div>
 
       <div className="grid grid-cols-7 gap-1">
+        {emptySlots.map(i => <div key={`empty-${i}`} />)}
+        
         {calendarDays.map((date) => (
           <div 
             key={date.day} 
@@ -41,7 +67,10 @@ export default function StudyCalendar() {
           >
             {date.day}
             {date.hasSession && (
-              <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1"></div>
+              <div className={`w-1.5 h-1.5 rounded-full mt-1 ${
+                date.status === 'completed' ? 'bg-green-500' : 
+                date.status === 'missed' ? 'bg-red-500' : 'bg-blue-400'
+              }`}></div>
             )}
           </div>
         ))}

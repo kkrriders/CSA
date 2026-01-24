@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Calendar, Clock, Target, Book } from 'lucide-react';
+import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 export default function CreateStudyPlanPage() {
   const router = useRouter();
@@ -20,11 +22,22 @@ export default function CreateStudyPlanPage() {
 
   const handleCreate = async () => {
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await api.createStudyPlan({
+        name: formData.name,
+        exam_date: formData.examDate, // Map to backend expected key (snake_case likely)
+        hours_per_week: formData.hoursPerWeek,
+        focus_topics: formData.focusTopics,
+        difficulty: formData.difficulty
+      });
+      toast.success('Study plan created successfully!');
       router.push('/study-plan');
-    }, 1500);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to create study plan');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

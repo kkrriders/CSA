@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bell, Mail, ArrowLeft, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import NotificationToggle from '@/components/settings/NotificationToggle';
 import FrequencySelector from '@/components/settings/FrequencySelector';
-import NotificationHistory from '@/components/settings/NotificationHistory';
+import NotificationHistory, { NotificationHistoryItem } from '@/components/settings/NotificationHistory';
 import toast from 'react-hot-toast';
+import { api } from '@/lib/api';
 
 export default function NotificationSettingsPage() {
   const router = useRouter();
@@ -18,13 +19,59 @@ export default function NotificationSettingsPage() {
     communityUpdates: true,
     achievementAlerts: true,
   });
+  const [history, setHistory] = useState<NotificationHistoryItem[]>([]);
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const [prefs, hist] = await Promise.all([
+          api.getNotificationPreferences(),
+          api.getNotificationHistory()
+        ]);
+
+        if (prefs) {
+          // Map backend response to local state if necessary
+          // Assuming backend returns keys matching these or similar
+          setSettings(prev => ({
+            ...prev,
+            ...prefs // Overlay backend values
+          }));
+          if (prefs.email_frequency) {
+            setFrequency(prefs.email_frequency);
+          }
+        }
+
+        if (hist && hist.history) {
+          // Map history items
+          setHistory(hist.history.map((h: any) => ({
+            id: h._id || h.id,
+            type: h.type || 'email',
+            title: h.subject || h.title || 'Notification',
+            date: new Date(h.sent_at).toLocaleDateString(),
+            status: h.status || 'sent'
+          })));
+        }
+      } catch (error) {
+        console.error("Failed to load notification settings", error);
+      }
+    }
+    loadSettings();
+  }, []);
 
   const handleToggle = (key: keyof typeof settings) => {
     setSettings(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleSave = () => {
-    toast.success('Notification preferences saved');
+  const handleSave = async () => {
+    try {
+      await api.updateNotificationPreferences({
+        ...settings,
+        email_frequency: frequency
+      });
+      toast.success('Notification preferences saved');
+    } catch (error) {
+      toast.error('Failed to save preferences');
+    }
   };
 
   return (
@@ -102,7 +149,7 @@ export default function NotificationSettingsPage() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          <NotificationHistory />
+          <NotificationHistory items={history} />
           
           <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl border border-yellow-100 dark:border-yellow-900/40">
             <h4 className="font-bold text-yellow-800 dark:text-yellow-200 text-sm mb-2">Note on Privacy</h4>

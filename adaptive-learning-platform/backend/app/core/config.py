@@ -34,12 +34,15 @@ class Settings(BaseSettings):
     CACHE_ENABLED: bool = True
     CACHE_TTL: int = 300  # 5 minutes default TTL
 
-    # Email Configuration
+    # Email Configuration (optional)
     MAIL_USERNAME: str = ""
     MAIL_PASSWORD: str = ""
     MAIL_FROM: str = "noreply@adaptivelearning.com"
     MAIL_PORT: int = 587
     MAIL_SERVER: str = "smtp.gmail.com"
+
+    # Testing flag
+    TESTING: bool = False
 
     # Test Settings
     DEFAULT_QUESTION_TIME: int = 90  # seconds

@@ -6,7 +6,7 @@ services:
     plan: free
     branch: main
     rootDir: adaptive-learning-platform/backend
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-prod.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
@@ -25,3 +25,19 @@ services:
         value: mistralai/mistral-7b-instruct
       - key: CORS_ORIGINS
         value: http://localhost:3000,https://csa-xg91.vercel.app
+      # Redis Cache (optional - set CACHE_ENABLED=false if no Redis)
+      - key: REDIS_URL
+        value: redis://localhost:6379
+      - key: CACHE_ENABLED
+        value: false
+      # Email (optional - can skip if not using notifications)
+      - key: MAIL_USERNAME
+        value: ""
+      - key: MAIL_PASSWORD
+        value: ""
+      - key: MAIL_FROM
+        value: noreply@adaptivelearning.com
+      - key: MAIL_SERVER
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: 587

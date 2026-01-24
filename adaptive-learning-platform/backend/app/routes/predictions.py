@@ -5,7 +5,11 @@ from fastapi import APIRouter, Depends
 
 from app.core.database import get_database
 from app.core.security import get_current_user_id
-from app.services.ml_prediction_service import MLPredictionService
+try:
+    from app.services.ml_prediction_service import MLPredictionService
+except ImportError:
+    # Fallback to version without sklearn
+    from app.services.ml_prediction_service_fallback import MLPredictionService
 
 router = APIRouter()
 

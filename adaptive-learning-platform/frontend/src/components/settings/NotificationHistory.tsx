@@ -3,12 +3,26 @@
 import React from 'react';
 import { Mail, Bell, CheckCircle } from 'lucide-react';
 
-export default function NotificationHistory() {
-  const history = [
+export interface NotificationHistoryItem {
+  id: number | string;
+  type: 'email' | 'push' | 'in_app';
+  title: string;
+  date: string;
+  status: string;
+}
+
+interface NotificationHistoryProps {
+  items?: NotificationHistoryItem[];
+}
+
+export default function NotificationHistory({ items: propItems }: NotificationHistoryProps) {
+  const defaultHistory: NotificationHistoryItem[] = [
     { id: 1, type: 'email', title: 'Weekly Progress Report', date: '2 days ago', status: 'sent' },
     { id: 2, type: 'push', title: 'Study Reminder: CNNs', date: '3 days ago', status: 'sent' },
     { id: 3, type: 'email', title: 'New Course Recommendation', date: '5 days ago', status: 'opened' },
   ];
+
+  const history = propItems || defaultHistory;
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">

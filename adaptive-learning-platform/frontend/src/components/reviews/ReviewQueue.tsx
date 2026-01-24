@@ -3,7 +3,7 @@
 import React from 'react';
 import { Play, Clock, Layers } from 'lucide-react';
 
-interface ReviewDeck {
+export interface ReviewDeck {
   id: string;
   name: string;
   dueCount: number;
@@ -11,13 +11,20 @@ interface ReviewDeck {
   nextReview: string;
 }
 
-export default function ReviewQueue() {
-  // Mock data
-  const decks: ReviewDeck[] = [
+interface ReviewQueueProps {
+  decks?: ReviewDeck[];
+  onStartReview?: (deckId: string) => void;
+}
+
+export default function ReviewQueue({ decks: propDecks, onStartReview }: ReviewQueueProps) {
+  // Mock data fallback
+  const defaultDecks: ReviewDeck[] = [
     { id: '1', name: 'Computer Vision Basics', dueCount: 15, estimatedTime: 10, nextReview: 'Now' },
     { id: '2', name: 'Transformer Architectures', dueCount: 8, estimatedTime: 5, nextReview: 'Now' },
     { id: '3', name: 'Reinforcement Learning', dueCount: 42, estimatedTime: 25, nextReview: '2 hours' },
   ];
+
+  const decks = propDecks || defaultDecks;
 
   return (
     <div className="space-y-4">
@@ -40,7 +47,10 @@ export default function ReviewQueue() {
             </div>
           </div>
           
-          <button className="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition shadow-lg hover:shadow-blue-500/25">
+          <button 
+            onClick={() => onStartReview?.(deck.id)}
+            className="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition shadow-lg hover:shadow-blue-500/25"
+          >
             <Play className="w-5 h-5 fill-current" />
           </button>
         </div>

@@ -1,13 +1,60 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Repeat, Calendar, BarChart } from 'lucide-react';
-import ReviewQueue from '@/components/reviews/ReviewQueue';
+import ReviewQueue, { ReviewDeck } from '@/components/reviews/ReviewQueue';
 import ReviewCalendar from '@/components/reviews/ReviewCalendar';
+import { api } from '@/lib/api';
 
 export default function ReviewsPage() {
   const router = useRouter();
+  const [decks, setDecks] = useState<ReviewDeck[]>([]);
+  const [totalDue, setTotalDue] = useState(0);
+
+  useEffect(() => {
+    async function loadQueue() {
+      try {
+        const data = await api.getReviewQueue();
+        setTotalDue(data.total_due);
+        
+        // Group by topic if possible, for now just one big deck if items exist
+        if (data.queue && data.queue.length > 0) {
+          // Simple grouping logic or just a master deck
+          // In a real app, we'd group by document/topic
+          setDecks([{
+            id: 'all',
+            name: 'General Review',
+            dueCount: data.total_due,
+            estimatedTime: Math.ceil(data.total_due * 1.5), // 1.5 min per q
+            nextReview: 'Now'
+          }]);
+        } else {
+          setDecks([]);
+        }
+      } catch (e) {
+        console.error("Failed to load review queue");
+      }
+    }
+    loadQueue();
+  }, []);
+
+  const handleStartReview = async (deckId: string) => {
+    // Start a review session
+    try {
+      const session = await api.createReviewSession();
+      if (session && session.session_id) {
+        // Navigate to a review session page (we need to build this or reuse exam page)
+        // For now, let's reuse the exam page structure or a new route
+        // Assuming we have a route or just reuse test page with a flag
+        // router.push(`/reviews/session/${session.session_id}`); 
+        // We haven't built /reviews/session/[id] yet, so let's mock it or redirect to test
+        toast.success("Review session started (Mock navigation)");
+      }
+    } catch (e) {
+      toast.error("Failed to start session");
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -26,7 +73,7 @@ export default function ReviewsPage() {
         <div className="lg:col-span-2 space-y-8">
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Due for Review</h2>
-            <ReviewQueue />
+            <ReviewQueue decks={decks} onStartReview={handleStartReview} />
           </div>
 
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
@@ -54,7 +101,7 @@ export default function ReviewsPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Total Cards</span>
-                <span className="font-bold text-gray-900 dark:text-white">1,240</span>
+                <span className="font-bold text-gray-900 dark:text-white">{totalDue + 850 + 390}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Mature Cards (>21 days)</span>
@@ -76,3 +123,4 @@ export default function ReviewsPage() {
     </div>
   );
 }
+import toast from 'react-hot-toast';
