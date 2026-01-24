@@ -1,5 +1,6 @@
 FROM python:3.11.9-slim
 
+# Force rebuild - updated 2026-01-24
 WORKDIR /app
 
 # Install system deps for pillow, pymongo etc
