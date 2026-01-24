@@ -6,6 +6,7 @@ import { Repeat, Calendar, BarChart } from 'lucide-react';
 import ReviewQueue, { ReviewDeck } from '@/components/reviews/ReviewQueue';
 import ReviewCalendar from '@/components/reviews/ReviewCalendar';
 import { api } from '@/lib/api';
+import toast from 'react-hot-toast';
 
 export default function ReviewsPage() {
   const router = useRouter();
@@ -104,7 +105,7 @@ export default function ReviewsPage() {
                 <span className="font-bold text-gray-900 dark:text-white">{totalDue + 850 + 390}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Mature Cards (>21 days)</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Mature Cards ({" > "} 21 days)</span>
                 <span className="font-bold text-green-600 dark:text-green-400">850 (68%)</span>
               </div>
               <div className="flex justify-between items-center">
@@ -123,4 +124,3 @@ export default function ReviewsPage() {
     </div>
   );
 }
-import toast from 'react-hot-toast';
