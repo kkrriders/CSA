@@ -17,10 +17,10 @@ db = Database()
 async def connect_to_mongo():
     """Connect to MongoDB"""
     # Configure MongoDB client with SSL/TLS settings for Atlas
-    import ssl
     db.client = AsyncIOMotorClient(
         settings.MONGODB_URI,
-        ssl_cert_reqs=ssl.CERT_NONE,  # Disable certificate verification
+        tls=True,
+        tlsAllowInvalidCertificates=True,  # Bypass certificate verification
         serverSelectionTimeoutMS=30000,
         connectTimeoutMS=30000,
         socketTimeoutMS=30000
