@@ -21,7 +21,7 @@ services:
       - key: OPENROUTER_MODEL
         value: mistralai/mistral-7b-instruct
       - key: CORS_ORIGINS
-        value: http://localhost:3000,https://csa-xg91.vercel.app
+        value: http://localhost:3000,https://csa-weld.vercel.app,https://csa-xg91.vercel.app
       # Redis Cache (optional - set CACHE_ENABLED=false if no Redis)
       - key: REDIS_URL
         value: redis://localhost:6379
