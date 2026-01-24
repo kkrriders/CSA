@@ -5,7 +5,7 @@ import { CheckCircle, XCircle, MinusCircle, Clock } from 'lucide-react';
 
 interface TimelineItem {
   id: number;
-  status: 'correct' | 'wrong' | 'skipped';
+  status: 'correct' | 'wrong' | 'skipped' | 'not_attempted';
   timeTaken: number;
 }
 

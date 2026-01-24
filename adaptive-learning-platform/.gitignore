@@ -56,3 +56,16 @@ frontend/node_modules/
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Documentation (generated/temporary)
+DEPLOY_NOW.md
+RENDER_PYTHON_VERSION_FIX.md
+RENDER_DEPLOYMENT.md
+ANALYTICS_COMPLETE_SUMMARY.md
+ANALYTICS_REFACTOR.md
+CLEANUP_SUMMARY.md
+QUICK_TEST_GUIDE.md
+WORLD_CLASS_FEATURES.md
+backend/RENDER_DEPLOYMENT_FIX.md
+backend/BACKEND_IMPLEMENTATION_COMPLETE.md
+backend/test_render_ready.py
