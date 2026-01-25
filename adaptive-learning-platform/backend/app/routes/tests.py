@@ -25,13 +25,65 @@ from app.services.question_selection_service import QuestionSelectionService
 router = APIRouter()
 
 
+@router.get("/in-progress", response_model=List[TestSessionResponse])
+async def get_in_progress_tests(
+    user_id: str = Depends(get_current_user_id),
+    db=Depends(get_database)
+):
+    """Get all in-progress tests for current user"""
+
+    cursor = db.test_sessions.find({
+        "user_id": ObjectId(user_id),
+        "status": TestStatus.IN_PROGRESS
+    }).sort("started_at", -1)
+
+    sessions = await cursor.to_list(length=100)
+
+    from app.models.test_session import TestConfig
+
+    return [
+        TestSessionResponse(
+            _id=str(s["_id"]),
+            document_id=str(s["document_id"]),
+            config=TestConfig(**s["config"]),
+            current_question_index=s["current_question_index"],
+            total_questions=len(s.get("questions", [])),
+            status=s["status"],
+            started_at=s["started_at"],
+            completed_at=s.get("completed_at")
+        )
+        for s in sessions
+    ]
+
+
 @router.post("/start", response_model=TestSessionResponse, status_code=status.HTTP_201_CREATED)
 async def start_test(
     test_config: TestSessionCreate,
     user_id: str = Depends(get_current_user_id),
     db=Depends(get_database)
 ):
-    """Start a new test session"""
+    """Start a new test session OR resume existing in-progress test"""
+
+    # CHECK FOR EXISTING IN-PROGRESS TEST FIRST
+    existing_test = await db.test_sessions.find_one({
+        "user_id": ObjectId(user_id),
+        "document_id": ObjectId(test_config.document_id),
+        "status": TestStatus.IN_PROGRESS
+    })
+
+    if existing_test:
+        # Return existing test - user will resume where they left off
+        from app.models.test_session import TestConfig
+        return TestSessionResponse(
+            _id=str(existing_test["_id"]),
+            document_id=str(existing_test["document_id"]),
+            config=TestConfig(**existing_test["config"]),
+            current_question_index=existing_test["current_question_index"],
+            total_questions=len(existing_test["questions"]),
+            status=existing_test["status"],
+            started_at=existing_test["started_at"],
+            completed_at=existing_test.get("completed_at")
+        )
 
     # Verify document exists and belongs to user
     document = await db.documents.find_one({

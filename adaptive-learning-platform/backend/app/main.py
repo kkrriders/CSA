@@ -99,3 +99,7 @@ app.include_router(teacher.router, prefix="/api/teacher", tags=["Teacher Dashboa
 app.include_router(predictions.router, prefix="/api/predictions", tags=["ML Predictions"])
 app.include_router(experiments.router, prefix="/api/experiments", tags=["A/B Testing"])
 app.include_router(session_recording.router, prefix="/api/sessions", tags=["Session Recording"])
+
+# Migration endpoints (for fixing old data)
+from app.routes import migration
+app.include_router(migration.router, prefix="/api/migration", tags=["Migration"])

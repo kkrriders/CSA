@@ -37,11 +37,14 @@ class QuestionSelectionService:
             tuple: (list of questions, boolean indicating if more generation needed)
         """
 
-        # Build query
+        # Build query - treat missing is_mastered field as False (backwards compatibility)
         query = {
             "document_id": ObjectId(document_id),
             "user_id": ObjectId(user_id),
-            "is_mastered": False  # Exclude mastered questions
+            "$or": [
+                {"is_mastered": False},
+                {"is_mastered": {"$exists": False}}  # Old questions without tracking fields
+            ]
         }
 
         # Apply filters
@@ -177,20 +180,30 @@ class QuestionSelectionService:
 
         total = await db.questions.count_documents(query_base)
 
+        # Backwards compatible queries - handle old questions without tracking fields
         available = await db.questions.count_documents({
             **query_base,
-            "is_mastered": False
+            "$or": [
+                {"is_mastered": False},
+                {"is_mastered": {"$exists": False}}
+            ]
         })
 
         never_answered = await db.questions.count_documents({
             **query_base,
-            "times_answered": 0
+            "$or": [
+                {"times_answered": 0},
+                {"times_answered": {"$exists": False}}
+            ]
         })
 
         needs_practice = await db.questions.count_documents({
             **query_base,
             "$expr": {"$lt": ["$times_correct", "$times_answered"]},
-            "is_mastered": False
+            "$or": [
+                {"is_mastered": False},
+                {"is_mastered": {"$exists": False}}
+            ]
         })
 
         mastered = await db.questions.count_documents({

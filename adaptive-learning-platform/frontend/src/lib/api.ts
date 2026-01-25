@@ -107,6 +107,11 @@ class APIClient {
     return data;
   }
 
+  async getInProgressTests(): Promise<TestSession[]> {
+    const { data } = await this.client.get('/tests/in-progress');
+    return data;
+  }
+
   async getTestSession(sessionId: string): Promise<TestSession> {
     const { data } = await this.client.get(`/tests/${sessionId}`);
     return data;

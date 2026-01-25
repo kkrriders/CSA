@@ -6,7 +6,7 @@ import { Upload, FileText, Loader, Trash2, PlayCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
-import type { DocumentListItem } from '@/types';
+import type { DocumentListItem, TestSession } from '@/types';
 import StreakCounter from '@/components/dashboard/StreakCounter';
 import QuickStatsCards, { DashboardStats } from '@/components/dashboard/QuickStatsCards';
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
@@ -22,6 +22,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | undefined>(undefined);
   const [topics, setTopics] = useState<TopicStats[]>([]);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [inProgressTests, setInProgressTests] = useState<TestSession[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -31,14 +32,16 @@ export default function DashboardPage() {
     
     async function loadDashboardData() {
       try {
-        const [docs, dashboardStats, velocity] = await Promise.all([
+        const [docs, dashboardStats, velocity, inProgress] = await Promise.all([
           api.getDocuments(),
           api.getUserDashboardStats().catch(() => null),
-          api.getLearningVelocity().catch(() => ({ velocities: [] }))
+          api.getLearningVelocity().catch(() => ({ velocities: [] })),
+          api.getInProgressTests().catch(() => [])
         ]);
         
         setDocuments(docs);
-        
+        setInProgressTests(inProgress);
+
         if (dashboardStats) {
           setStats(dashboardStats);
         }
@@ -130,7 +133,16 @@ export default function DashboardPage() {
   };
 
   const handleStartTest = (documentId: string) => {
-    router.push(`/test/configure?documentId=${documentId}`);
+    // Check if there's an in-progress test for this document
+    const inProgressTest = inProgressTests.find(t => t.document_id === documentId);
+
+    if (inProgressTest) {
+      // Resume existing test
+      router.push(`/test/${inProgressTest._id}`);
+    } else {
+      // Configure new test
+      router.push(`/test/configure?documentId=${documentId}`);
+    }
   };
 
   return (
@@ -216,13 +228,25 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex gap-2">
                         {doc.processing_status === 'completed' && (
-                          <button
-                            onClick={() => handleStartTest(doc._id)}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-                          >
-                            <PlayCircle className="w-4 h-4" />
-                            Start Test
-                          </button>
+                          <>
+                            {inProgressTests.find(t => t.document_id === doc._id) ? (
+                              <button
+                                onClick={() => handleStartTest(doc._id)}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+                              >
+                                <PlayCircle className="w-4 h-4" />
+                                Resume Test
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleStartTest(doc._id)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                              >
+                                <PlayCircle className="w-4 h-4" />
+                                Start Test
+                              </button>
+                            )}
+                          </>
                         )}
                         <button
                           onClick={() => handleDelete(doc._id)}
