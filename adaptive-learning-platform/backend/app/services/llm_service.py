@@ -144,6 +144,19 @@ CRITICAL RULES:
 5. Include detailed explanations
 6. Return ONLY valid JSON array, no markdown formatting, no additional text"""
 
+        # Build question type specific instructions
+        if question_type == "mcq":
+            type_instruction = "IMPORTANT: For MCQ questions, you MUST include exactly 4 options with one correct answer."
+            options_example = '''  "options": [
+    {"text": "Option A", "is_correct": false},
+    {"text": "Option B", "is_correct": true},
+    {"text": "Option C", "is_correct": false},
+    {"text": "Option D", "is_correct": false}
+  ],'''
+        else:
+            type_instruction = "IMPORTANT: For short_answer questions, do NOT include options, only provide the correct_answer as text."
+            options_example = '  "options": null,'
+
         user_prompt = f"""
 Context: {context}
 
@@ -154,26 +167,21 @@ Number of Questions: {num_questions}
 
 Generate {num_questions} {question_type} questions with {difficulty} difficulty from the above context.
 
-{"IMPORTANT: For MCQ questions, you MUST include exactly 4 options with one correct answer." if question_type == "mcq" else "IMPORTANT: For short_answer questions, do NOT include options, only provide the correct_answer as text."}
+{type_instruction}
 
 Return a JSON array where each question follows this EXACT structure:
-{"[" if num_questions > 1 else ""}
+[
 {{
   "question_text": "The question text here",
   "question_type": "{question_type}",
   "difficulty": "{difficulty}",
   "topic": "{topic}",
-  {"options: [" if question_type == "mcq" else "options: null,"}
-    {"{\"text\": \"Option A\", \"is_correct\": false}," if question_type == "mcq" else ""}
-    {"{\"text\": \"Option B\", \"is_correct\": true}," if question_type == "mcq" else ""}
-    {"{\"text\": \"Option C\", \"is_correct\": false}," if question_type == "mcq" else ""}
-    {"{\"text\": \"Option D\", \"is_correct\": false}" if question_type == "mcq" else ""}
-  {"]," if question_type == "mcq" else ""}
+{options_example}
   "correct_answer": "The correct answer as plain text",
   "explanation": "Detailed explanation of why this is correct",
   "source_context": "Relevant excerpt from the context above"
 }}
-{"]" if num_questions > 1 else ""}
+]
 
 CRITICAL: Return ONLY the JSON array, NO markdown code blocks, NO additional text before or after.
 """
