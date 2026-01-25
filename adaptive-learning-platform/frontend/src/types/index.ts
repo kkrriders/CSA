@@ -109,6 +109,7 @@ export interface TestConfig {
   time_per_question: number;
   topics?: string[];
   difficulty_levels?: string[];
+  question_types?: QuestionType[];
 }
 
 export interface TestSession {
