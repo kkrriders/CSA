@@ -53,6 +53,12 @@ async def start_test(
     if test_config.config.difficulty_levels:
         query["difficulty"] = {"$in": test_config.config.difficulty_levels}
 
+    # CRITICAL: Filter by question type (MCQ vs Short Answer)
+    if test_config.config.question_types:
+        # Convert enum to string if needed
+        question_types = [qt if isinstance(qt, str) else qt.value for qt in test_config.config.question_types]
+        query["question_type"] = {"$in": question_types}
+
     cursor = db.questions.find(query)
     available_questions = await cursor.to_list(length=1000)
 

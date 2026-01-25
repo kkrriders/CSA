@@ -55,6 +55,7 @@ class TestConfig(BaseModel):
     time_per_question: int = 90
     topics: Optional[List[str]] = None
     difficulty_levels: Optional[List[str]] = None
+    question_types: Optional[List[str]] = None  # NEW: MCQ, short_answer, or both
 
 
 class TestSessionCreate(BaseModel):
