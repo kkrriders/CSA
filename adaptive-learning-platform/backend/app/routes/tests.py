@@ -20,6 +20,7 @@ from app.models.test_session import (
 )
 from app.models.question import QuestionResponse, QuestionWithAnswer
 from app.services.question_stats_service import QuestionStatsService
+from app.services.question_selection_service import QuestionSelectionService
 
 router = APIRouter()
 
@@ -44,33 +45,36 @@ async def start_test(
             detail="Document not found"
         )
 
-    # Get available questions
-    query = {"document_id": ObjectId(test_config.document_id)}
+    # SMART QUESTION SELECTION - Reuse existing questions first!
+    # This reduces LLM costs and database load significantly
 
-    if test_config.config.topics:
-        query["topic"] = {"$in": test_config.config.topics}
-
-    if test_config.config.difficulty_levels:
-        query["difficulty"] = {"$in": test_config.config.difficulty_levels}
-
-    # CRITICAL: Filter by question type (MCQ vs Short Answer)
+    # Prepare filters
+    question_types = None
     if test_config.config.question_types:
-        # Convert enum to string if needed
         question_types = [qt if isinstance(qt, str) else qt.value for qt in test_config.config.question_types]
-        query["question_type"] = {"$in": question_types}
 
-    cursor = db.questions.find(query)
-    available_questions = await cursor.to_list(length=1000)
+    # Get available questions using intelligent selection
+    selected_questions, needs_generation = await QuestionSelectionService.get_available_questions(
+        document_id=test_config.document_id,
+        user_id=user_id,
+        num_needed=test_config.config.total_questions,
+        question_types=question_types,
+        topics=test_config.config.topics,
+        difficulty_levels=test_config.config.difficulty_levels,
+        db=db
+    )
 
-    if len(available_questions) < test_config.config.total_questions:
+    # If we don't have enough questions, we need more
+    if needs_generation:
+        num_missing = test_config.config.total_questions - len(selected_questions)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Not enough questions available. Found {len(available_questions)}, need {test_config.config.total_questions}"
+            detail=f"Not enough questions available. Found {len(selected_questions)}, need {test_config.config.total_questions}. Please generate {num_missing} more questions first."
         )
 
-    # Randomly select questions
-    selected_questions = random.sample(available_questions, test_config.config.total_questions)
+    # Mark these questions as used
     question_ids = [str(q["_id"]) for q in selected_questions]
+    await QuestionSelectionService.mark_questions_used(question_ids, db)
 
     # Initialize answers
     answers = [
@@ -239,6 +243,13 @@ async def submit_answer(
         question_id=answer_data.question_id,
         correct=is_correct,
         time_taken=answer_data.time_taken,
+        db=db
+    )
+
+    # Update question performance tracking (for smart reuse)
+    await QuestionSelectionService.update_question_performance(
+        question_id=answer_data.question_id,
+        is_correct=is_correct,
         db=db
     )
 

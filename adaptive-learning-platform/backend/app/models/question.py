@@ -71,6 +71,12 @@ class QuestionInDB(BaseModel):
     source_context: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
+    # Question reuse tracking fields
+    times_answered: int = 0  # How many times this question was answered
+    times_correct: int = 0   # How many times answered correctly
+    last_used_at: Optional[datetime] = None  # When was it last used in a test
+    is_mastered: bool = False  # True if answered correctly 2+ times
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True

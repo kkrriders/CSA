@@ -96,6 +96,11 @@ class APIClient {
     return data;
   }
 
+  async getQuestionPoolStats(documentId: string): Promise<any> {
+    const { data } = await this.client.get(`/questions/document/${documentId}/pool-stats`);
+    return data;
+  }
+
   // Test APIs
   async startTest(documentId: string, config: TestConfig): Promise<TestSession> {
     const { data } = await this.client.post('/tests/start', { document_id: documentId, config });

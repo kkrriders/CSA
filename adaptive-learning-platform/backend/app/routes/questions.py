@@ -15,6 +15,7 @@ from app.models.question import (
     MCQOption
 )
 from app.services.llm_service import LLMService
+from app.services.question_selection_service import QuestionSelectionService
 
 router = APIRouter()
 
@@ -287,3 +288,33 @@ async def delete_question(
         )
 
     return None
+
+
+@router.get("/document/{document_id}/pool-stats")
+async def get_question_pool_stats(
+    document_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db=Depends(get_database)
+):
+    """
+    Get statistics about the question pool for a document
+
+    Shows how many questions are:
+    - Total: all questions ever generated
+    - Available: questions that can be used (not mastered)
+    - Never answered: fresh questions
+    - Needs practice: questions answered wrong
+    - Mastered: questions answered correctly 2+ times
+    """
+
+    stats = await QuestionSelectionService.get_question_pool_stats(
+        document_id=document_id,
+        user_id=user_id,
+        db=db
+    )
+
+    return {
+        "document_id": document_id,
+        **stats,
+        "message": f"{stats['available']} questions available for testing"
+    }

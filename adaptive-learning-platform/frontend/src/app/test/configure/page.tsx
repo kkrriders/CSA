@@ -14,6 +14,7 @@ function TestConfigureContent() {
 
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
+  const [poolStats, setPoolStats] = useState<any>(null);
   const [config, setConfig] = useState({
     num_questions: 10,
     time_per_question: 90,
@@ -32,8 +33,12 @@ function TestConfigureContent() {
 
   const loadDocument = async () => {
     try {
-      const doc = await api.getDocument(documentId!);
+      const [doc, stats] = await Promise.all([
+        api.getDocument(documentId!),
+        api.getQuestionPoolStats(documentId!).catch(() => null)
+      ]);
       setDocument(doc);
+      setPoolStats(stats);
     } catch (error) {
       toast.error('Failed to load document');
       router.push('/dashboard');
@@ -43,64 +48,37 @@ function TestConfigureContent() {
   };
 
   const handleStartTest = async () => {
+    // Check if enough questions are available
+    if (poolStats && poolStats.available < config.num_questions) {
+      const needed = config.num_questions - poolStats.available;
+      toast.error(`Not enough questions available. You have ${poolStats.available}, need ${config.num_questions}. Generate ${needed} more questions first.`);
+      return;
+    }
+
     setLoading(true);
-    const loadingToast = toast.loading('Generating questions...');
+    const loadingToast = toast.loading('Preparing your test...');
 
     try {
-      // Generate questions
-      await api.generateQuestions({
-        document_id: documentId!,
-        num_questions: config.num_questions,
-        question_types: config.question_types,
-      });
-
-      // Wait for questions to be generated (poll every 3 seconds, max 60 seconds)
-      let questionsReady = false;
-      let attempts = 0;
-      const maxAttempts = 20;
-
-      // Initial wait to let generation start
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      while (!questionsReady && attempts < maxAttempts) {
-        try {
-          const questions = await api.getQuestionsForDocument(documentId!);
-          console.log(`Polling: ${questions.length}/${config.num_questions} questions ready`);
-
-          if (questions.length >= config.num_questions) {
-            questionsReady = true;
-            toast.success('Questions generated!', { id: loadingToast });
-          } else {
-            toast.loading(`Generating questions... ${questions.length}/${config.num_questions}`, { id: loadingToast });
-            await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds before next check
-          }
-        } catch (error) {
-          console.error('Error checking questions:', error);
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
-
-        attempts++;
-      }
-
-      if (!questionsReady) {
-        toast.error('Question generation timed out. Please refresh and try again.', { id: loadingToast });
-        setLoading(false);
-        return;
-      }
-
-      // Start test session
-      toast.loading('Starting test...', { id: loadingToast });
+      // Start test session directly (using smart question selection)
       const session = await api.startTest(documentId!, {
         total_questions: config.num_questions,
         time_per_question: config.time_per_question,
         topics: config.topics.length > 0 ? config.topics : undefined,
         difficulty_levels: config.difficulty_levels.length > 0 ? config.difficulty_levels : undefined,
+        question_types: config.question_types,
       });
 
       toast.success('Test started!', { id: loadingToast });
       router.push(`/test/${session._id}`);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Failed to start test', { id: loadingToast });
+      const errorMsg = error.response?.data?.detail || 'Failed to start test';
+      toast.error(errorMsg, { id: loadingToast });
+
+      // Refresh pool stats after error
+      if (errorMsg.includes('Not enough questions')) {
+        const stats = await api.getQuestionPoolStats(documentId!).catch(() => null);
+        setPoolStats(stats);
+      }
     } finally {
       setLoading(false);
     }
@@ -126,6 +104,30 @@ function TestConfigureContent() {
           <div className="mb-6">
             <h1 className="text-2xl font-bold mb-2 dark:text-white">{document.title}</h1>
             <p className="text-gray-600 dark:text-gray-400">{document.sections.length} sections, {document.metadata.word_count} words</p>
+
+            {/* Question Pool Stats */}
+            {poolStats && (
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-medium text-blue-900 dark:text-blue-200">
+                      {poolStats.available} questions available for testing
+                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                      {poolStats.never_answered > 0 && `${poolStats.never_answered} fresh • `}
+                      {poolStats.needs_practice > 0 && `${poolStats.needs_practice} need practice • `}
+                      {poolStats.mastered} mastered
+                    </p>
+                    {poolStats.available < 10 && (
+                      <p className="text-sm text-orange-600 dark:text-orange-400 mt-2">
+                        ⚠️ Low question pool. Consider generating more questions for variety.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Number of Questions */}
@@ -230,11 +232,20 @@ function TestConfigureContent() {
           {/* Start Button */}
           <button
             onClick={handleStartTest}
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
+            disabled={loading || (poolStats && poolStats.available < config.num_questions)}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600"
           >
-            {loading ? 'Starting Test...' : 'Start Test'}
+            {loading ? 'Starting Test...' :
+             poolStats && poolStats.available < config.num_questions ?
+             `Need ${config.num_questions - poolStats.available} More Questions` :
+             'Start Test'}
           </button>
+
+          {poolStats && poolStats.available < config.num_questions && (
+            <p className="mt-3 text-center text-sm text-orange-600 dark:text-orange-400">
+              Generate more questions or reduce the number of questions to start the test
+            </p>
+          )}
         </div>
       </div>
     </div>
