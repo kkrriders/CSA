@@ -34,11 +34,13 @@ export default function MistakeBreakdown({ weaknesses, totalWrong }: MistakeBrea
     });
   });
 
-  // Map weakness types to display info
+  // Map failure patterns to display info
   const mistakeTypeMap: Record<string, { icon: any; color: string; bg: string; label: string }> = {
     'fast_wrong': { icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-100 dark:bg-yellow-900/30', label: 'Rushed Answers' },
     'slow_wrong': { icon: Target, color: 'text-blue-600', bg: 'bg-blue-100 dark:bg-blue-900/30', label: 'Struggled Topics' },
+    'easy_wrong': { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-100 dark:bg-red-900/30', label: 'Knowledge Gaps' },
     'tricky_wrong': { icon: AlertCircle, color: 'text-purple-600', bg: 'bg-purple-100 dark:bg-purple-900/30', label: 'Tricky Questions' },
+    'repeated_topic': { icon: Target, color: 'text-orange-600', bg: 'bg-orange-100 dark:bg-orange-900/30', label: 'Recurring Issues' },
   };
 
   const mistakes = Object.entries(weaknessCounts).map(([type, count]) => ({
