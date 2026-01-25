@@ -29,6 +29,7 @@ export default function TestResultsPage({ params }: { params: { sessionId: strin
   const [mastery, setMastery] = useState<TopicMastery[]>([]);
   const [weakness, setWeakness] = useState<WeaknessAnalysis[]>([]);
   const [adaptive, setAdaptive] = useState<AdaptiveTargeting | null>(null);
+  const [previousScore, setPreviousScore] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   
   const [explanations, setExplanations] = useState<Record<string, AIExplanation>>({});
@@ -46,6 +47,25 @@ export default function TestResultsPage({ params }: { params: { sessionId: strin
           )
         ]);
         setResults(resData);
+
+        // Get the session to find document_id
+        const session = await api.getTestSession(sessionId);
+        const documentId = session.document_id;
+
+        // Fetch previous test score for comparison (if available)
+        try {
+          const overallPerf = await api.getOverallPerformance(documentId);
+          // Calculate previous average excluding current session
+          if (overallPerf && overallPerf.total_tests > 1) {
+            // Simple approximation: use overall average as previous score
+            const currentWeight = 1 / overallPerf.total_tests;
+            const previousAvg = (overallPerf.average_accuracy - (resData.score.percentage * currentWeight)) / (1 - currentWeight);
+            setPreviousScore(previousAvg);
+          }
+        } catch (err) {
+          console.log('No previous tests found for comparison');
+          setPreviousScore(undefined);
+        }
 
         // Load analytics data (with individual error handling)
         const [masteryData, weaknessData, adaptiveData] = await Promise.all([
@@ -251,9 +271,15 @@ export default function TestResultsPage({ params }: { params: { sessionId: strin
         <div className="space-y-8 mb-8">
           <QuestionTimeline items={timelineItems} />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <MistakeBreakdown />
-            <ComparisonView />
-            <RecommendationsCard />
+            <MistakeBreakdown
+              weaknesses={weakness}
+              totalWrong={score.wrong}
+            />
+            <ComparisonView
+              currentScore={score.percentage}
+              previousScore={previousScore}
+            />
+            <RecommendationsCard adaptive={adaptive} />
           </div>
         </div>
 

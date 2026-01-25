@@ -91,6 +91,8 @@ class AnalyticsService:
         mastery_list = []
         for topic, stats in topic_stats.items():
             mastery_pct = (stats["correct"] / stats["total"] * 100) if stats["total"] > 0 else 0
+            # mastery_score is normalized 0-1 version
+            mastery_score = mastery_pct / 100.0
             avg_time = stats["total_time"] / stats["total"] if stats["total"] > 0 else 0
 
             mastery_list.append(TopicMastery(
@@ -98,7 +100,8 @@ class AnalyticsService:
                 total_attempts=stats["total"],
                 correct_attempts=stats["correct"],
                 wrong_attempts=stats["wrong"],
-                mastery_percentage=round(mastery_pct, 2),
+                mastery_score=round(mastery_score, 4),  # REQUIRED field (0-1)
+                mastery_percentage=round(mastery_pct, 2),  # Display percentage
                 avg_time_taken=round(avg_time, 2),
                 difficulty_breakdown=dict(stats["difficulties"])
             ))
