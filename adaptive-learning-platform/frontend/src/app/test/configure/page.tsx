@@ -121,7 +121,8 @@ function TestConfigureContent() {
                       {(poolStats.needs_practice || 0) > 0 && `${poolStats.needs_practice} need practice • `}
                       {poolStats.mastered || 0} mastered
                     </p>
-                    {(poolStats.available || 0) < 10 && (
+                    {/* Only show if mastered some AND low available */}
+                    {(poolStats.total || 0) > 0 && (poolStats.available || 0) < 10 && (poolStats.mastered || 0) > 0 && (
                       <p className="text-sm text-orange-600 dark:text-orange-400 mt-2">
                         ⚠️ Low question pool due to mastery. Consider generating more for variety.
                       </p>
