@@ -28,9 +28,9 @@ export default function MistakeBreakdown({ weaknesses, totalWrong }: MistakeBrea
   // Group weaknesses by type
   const weaknessCounts: Record<string, number> = {};
   weaknesses.forEach(w => {
-    const types = w.weakness_types || [];
-    types.forEach(type => {
-      weaknessCounts[type] = (weaknessCounts[type] || 0) + 1;
+    const patterns = w.failure_patterns || [];
+    patterns.forEach(pattern => {
+      weaknessCounts[pattern] = (weaknessCounts[pattern] || 0) + 1;
     });
   });
 
