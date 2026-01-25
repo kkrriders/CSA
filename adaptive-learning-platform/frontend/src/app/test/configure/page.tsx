@@ -123,7 +123,7 @@ function TestConfigureContent() {
                     </p>
                     {(poolStats.available || 0) < 10 && (
                       <p className="text-sm text-orange-600 dark:text-orange-400 mt-2">
-                        ⚠️ Low question pool. Consider generating more questions for variety.
+                        ⚠️ Low question pool due to mastery. Consider generating more for variety.
                       </p>
                     )}
                   </div>
@@ -234,10 +234,15 @@ function TestConfigureContent() {
           {/* Start Button */}
           <button
             onClick={handleStartTest}
-            disabled={loading || (poolStats && typeof poolStats === 'object' && poolStats.available !== undefined && poolStats.available < config.num_questions)}
+            disabled={
+              loading ||
+              config.num_questions < 5 ||
+              (poolStats && typeof poolStats === 'object' && poolStats.available !== undefined && poolStats.available < config.num_questions)
+            }
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600"
           >
             {loading ? 'Starting Test...' :
+             config.num_questions < 5 ? 'Need at least 5 questions' :
              poolStats && typeof poolStats === 'object' && poolStats.available !== undefined && poolStats.available < config.num_questions ?
              `Need ${config.num_questions - poolStats.available} More Questions` :
              'Start Test'}
