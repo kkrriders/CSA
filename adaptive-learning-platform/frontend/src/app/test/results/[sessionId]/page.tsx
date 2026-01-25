@@ -88,6 +88,15 @@ export default function TestResultsPage({ params }: { params: { sessionId: strin
         setAdaptive(adaptiveData);
       } catch (error: any) {
         console.error('Results loading error:', error);
+
+        // Check if it's a 400 error (bad test session)
+        if (error?.response?.status === 400) {
+          const errorMsg = error?.response?.data?.detail || 'Test session is invalid or incomplete';
+          toast.error(errorMsg);
+          setTimeout(() => router.push('/dashboard'), 2000);
+          return;
+        }
+
         if (error.message === 'Timeout') {
           toast.error('Loading results is taking longer than expected. Please refresh the page.');
         } else {

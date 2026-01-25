@@ -65,9 +65,20 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
       setFlagReason('Needs Review');
       setStartTime(Date.now());
       setTimeRemaining(session?.config.time_per_question || 90);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load question', error);
-      toast.error('Session might have ended or error occurred');
+
+      // Check if it's a 400 error (bad test session)
+      if (error?.response?.status === 400) {
+        const errorMsg = error?.response?.data?.detail || 'Test session is invalid';
+        toast.error(errorMsg);
+        // If session is invalid, go back to dashboard
+        setTimeout(() => router.push('/dashboard'), 1500);
+        return;
+      }
+
+      // Otherwise try to go to results
+      toast.error('Session might have ended');
       router.push(`/test/results/${sessionId}`);
     } finally {
       setLoading(false);

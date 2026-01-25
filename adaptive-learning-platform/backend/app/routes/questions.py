@@ -123,7 +123,12 @@ async def generate_questions_background(
                             "correct_answer": q["correct_answer"],
                             "explanation": q["explanation"],
                             "source_context": q.get("source_context", section_context[:500]),
-                            "created_at": datetime.utcnow()
+                            "created_at": datetime.utcnow(),
+                            # Question reuse tracking fields
+                            "times_answered": 0,
+                            "times_correct": 0,
+                            "last_used_at": None,
+                            "is_mastered": False
                         }
 
                         result = await db.questions.insert_one(question_doc)

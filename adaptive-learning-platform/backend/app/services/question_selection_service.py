@@ -4,7 +4,7 @@ Question Selection Service - Smart question reuse and selection
 Reduces LLM costs and database load by intelligently reusing existing questions
 """
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 from bson import ObjectId
 from datetime import datetime
 
@@ -23,7 +23,7 @@ class QuestionSelectionService:
         topics: Optional[List[str]] = None,
         difficulty_levels: Optional[List[str]] = None,
         db = None
-    ) -> tuple[List[Dict], bool]:
+    ) -> Tuple[List[Dict], bool]:
         """
         Get available questions for a test, returns (questions, needs_generation)
 

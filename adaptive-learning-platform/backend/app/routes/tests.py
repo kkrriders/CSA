@@ -72,6 +72,13 @@ async def start_test(
             detail=f"Not enough questions available. Found {len(selected_questions)}, need {test_config.config.total_questions}. Please generate {num_missing} more questions first."
         )
 
+    # Additional validation: ensure we actually have questions
+    if len(selected_questions) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No questions available for this document. Please generate questions first."
+        )
+
     # Mark these questions as used
     question_ids = [str(q["_id"]) for q in selected_questions]
     await QuestionSelectionService.mark_questions_used(question_ids, db)
@@ -170,10 +177,18 @@ async def get_current_question(
         )
 
     current_index = session["current_question_index"]
+
+    # Validate questions array exists and has items
+    if not session.get("questions") or len(session["questions"]) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Test session has no questions. Please create a new test."
+        )
+
     if current_index >= len(session["questions"]):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No more questions available"
+            detail="No more questions available. Test may be complete."
         )
 
     question_id = session["questions"][current_index]

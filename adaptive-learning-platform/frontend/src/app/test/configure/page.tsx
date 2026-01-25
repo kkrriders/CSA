@@ -49,10 +49,12 @@ function TestConfigureContent() {
 
   const handleStartTest = async () => {
     // Check if enough questions are available
-    if (poolStats && poolStats.available < config.num_questions) {
-      const needed = config.num_questions - poolStats.available;
-      toast.error(`Not enough questions available. You have ${poolStats.available}, need ${config.num_questions}. Generate ${needed} more questions first.`);
-      return;
+    if (poolStats && typeof poolStats === 'object' && poolStats.available !== undefined) {
+      if (poolStats.available < config.num_questions) {
+        const needed = config.num_questions - poolStats.available;
+        toast.error(`Not enough questions available. You have ${poolStats.available}, need ${config.num_questions}. Generate ${needed} more questions first.`);
+        return;
+      }
     }
 
     setLoading(true);
@@ -106,20 +108,20 @@ function TestConfigureContent() {
             <p className="text-gray-600 dark:text-gray-400">{document.sections.length} sections, {document.metadata.word_count} words</p>
 
             {/* Question Pool Stats */}
-            {poolStats && (
+            {poolStats && typeof poolStats === 'object' && poolStats.available !== undefined && (
               <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <div className="flex items-start gap-3">
                   <Settings className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="font-medium text-blue-900 dark:text-blue-200">
-                      {poolStats.available} questions available for testing
+                      {poolStats.available || 0} questions available for testing
                     </p>
                     <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                      {poolStats.never_answered > 0 && `${poolStats.never_answered} fresh • `}
-                      {poolStats.needs_practice > 0 && `${poolStats.needs_practice} need practice • `}
-                      {poolStats.mastered} mastered
+                      {(poolStats.never_answered || 0) > 0 && `${poolStats.never_answered} fresh • `}
+                      {(poolStats.needs_practice || 0) > 0 && `${poolStats.needs_practice} need practice • `}
+                      {poolStats.mastered || 0} mastered
                     </p>
-                    {poolStats.available < 10 && (
+                    {(poolStats.available || 0) < 10 && (
                       <p className="text-sm text-orange-600 dark:text-orange-400 mt-2">
                         ⚠️ Low question pool. Consider generating more questions for variety.
                       </p>
@@ -232,16 +234,16 @@ function TestConfigureContent() {
           {/* Start Button */}
           <button
             onClick={handleStartTest}
-            disabled={loading || (poolStats && poolStats.available < config.num_questions)}
+            disabled={loading || (poolStats && typeof poolStats === 'object' && poolStats.available !== undefined && poolStats.available < config.num_questions)}
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600"
           >
             {loading ? 'Starting Test...' :
-             poolStats && poolStats.available < config.num_questions ?
+             poolStats && typeof poolStats === 'object' && poolStats.available !== undefined && poolStats.available < config.num_questions ?
              `Need ${config.num_questions - poolStats.available} More Questions` :
              'Start Test'}
           </button>
 
-          {poolStats && poolStats.available < config.num_questions && (
+          {poolStats && typeof poolStats === 'object' && poolStats.available !== undefined && poolStats.available < config.num_questions && (
             <p className="mt-3 text-center text-sm text-orange-600 dark:text-orange-400">
               Generate more questions or reduce the number of questions to start the test
             </p>
