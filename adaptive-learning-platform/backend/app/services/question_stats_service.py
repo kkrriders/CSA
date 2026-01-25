@@ -1,8 +1,3 @@
-"""
-Question Statistics Service - Track empirical difficulty
-
-Replaces LLM difficulty guesses with real data
-"""
 
 from typing import Optional
 from bson import ObjectId

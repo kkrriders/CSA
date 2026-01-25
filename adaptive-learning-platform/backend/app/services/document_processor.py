@@ -10,16 +10,20 @@ class DocumentProcessor:
 
     @staticmethod
     def extract_text_from_pdf(file_path: str) -> Tuple[str, int]:
-        """Extract text from PDF file"""
+        """Extract text from PDF file - optimized for speed"""
         try:
             with open(file_path, 'rb') as file:
                 pdf_reader = PyPDF2.PdfReader(file)
                 total_pages = len(pdf_reader.pages)
 
-                text = ""
+                # Use list comprehension and join for better performance
+                text_parts = []
                 for page in pdf_reader.pages:
-                    text += page.extract_text() + "\n\n"
+                    page_text = page.extract_text()
+                    if page_text:  # Only add non-empty pages
+                        text_parts.append(page_text)
 
+                text = "\n\n".join(text_parts)
                 return text.strip(), total_pages
         except Exception as e:
             raise Exception(f"Error extracting PDF: {str(e)}")

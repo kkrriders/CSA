@@ -38,19 +38,41 @@ export default function TestResultsPage({ params }: { params: { sessionId: strin
   useEffect(() => {
     const loadResults = async () => {
       try {
-        const [resData, masteryData, weaknessData, adaptiveData] = await Promise.all([
+        // Load core results first (with timeout)
+        const resData = await Promise.race([
           api.getTestResults(sessionId),
-          api.getTopicMastery(sessionId),
-          api.getWeaknessMap(sessionId),
-          api.getAdaptiveTargeting(sessionId).catch(() => null)
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 10000)
+          )
         ]);
-        
         setResults(resData);
-        setMastery(masteryData.topic_mastery);
-        setWeakness(weaknessData.weakness_areas);
+
+        // Load analytics data (with individual error handling)
+        const [masteryData, weaknessData, adaptiveData] = await Promise.all([
+          api.getTopicMastery(sessionId).catch((err) => {
+            console.error('Topic mastery error:', err);
+            return { topic_mastery: [] };
+          }),
+          api.getWeaknessMap(sessionId).catch((err) => {
+            console.error('Weakness map error:', err);
+            return { weakness_areas: [] };
+          }),
+          api.getAdaptiveTargeting(sessionId).catch((err) => {
+            console.error('Adaptive targeting error:', err);
+            return null;
+          })
+        ]);
+
+        setMastery(masteryData.topic_mastery || []);
+        setWeakness(weaknessData.weakness_areas || []);
         setAdaptive(adaptiveData);
-      } catch (error) {
-        toast.error('Failed to load results');
+      } catch (error: any) {
+        console.error('Results loading error:', error);
+        if (error.message === 'Timeout') {
+          toast.error('Loading results is taking longer than expected. Please refresh the page.');
+        } else {
+          toast.error('Failed to load results. Please try refreshing the page.');
+        }
       } finally {
         setLoading(false);
       }

@@ -134,13 +134,15 @@ class LLMService:
 
         system_prompt = """You are an expert educational content creator. Your task is to generate high-quality questions from the provided text.
 
-Rules:
+CRITICAL RULES:
 1. Questions MUST be strictly based on the provided context
 2. Do NOT create generic questions or hallucinate information
 3. Questions should test understanding, not just memorization
-4. For MCQs: Include 4 options with only ONE correct answer
+4. STRICTLY follow the question_type specified:
+   - If question_type is "mcq": MUST include exactly 4 options with ONE correct answer
+   - If question_type is "short_answer": Do NOT include options, only correct_answer as text
 5. Include detailed explanations
-6. Return ONLY valid JSON, no additional text"""
+6. Return ONLY valid JSON array, no markdown formatting, no additional text"""
 
         user_prompt = f"""
 Context: {context}
@@ -152,24 +154,28 @@ Number of Questions: {num_questions}
 
 Generate {num_questions} {question_type} questions with {difficulty} difficulty from the above context.
 
-Return a JSON array where each question has this structure:
+{"IMPORTANT: For MCQ questions, you MUST include exactly 4 options with one correct answer." if question_type == "mcq" else "IMPORTANT: For short_answer questions, do NOT include options, only provide the correct_answer as text."}
+
+Return a JSON array where each question follows this EXACT structure:
+{"[" if num_questions > 1 else ""}
 {{
-  "question_text": "The question text",
+  "question_text": "The question text here",
   "question_type": "{question_type}",
   "difficulty": "{difficulty}",
   "topic": "{topic}",
-  "options": [
-    {{"text": "Option A", "is_correct": false}},
-    {{"text": "Option B", "is_correct": true}},
-    {{"text": "Option C", "is_correct": false}},
-    {{"text": "Option D", "is_correct": false}}
-  ],
-  "correct_answer": "The correct answer text",
-  "explanation": "Why this is correct and why others are wrong",
-  "source_context": "Relevant excerpt from context"
+  {"options: [" if question_type == "mcq" else "options: null,"}
+    {"{\"text\": \"Option A\", \"is_correct\": false}," if question_type == "mcq" else ""}
+    {"{\"text\": \"Option B\", \"is_correct\": true}," if question_type == "mcq" else ""}
+    {"{\"text\": \"Option C\", \"is_correct\": false}," if question_type == "mcq" else ""}
+    {"{\"text\": \"Option D\", \"is_correct\": false}" if question_type == "mcq" else ""}
+  {"]," if question_type == "mcq" else ""}
+  "correct_answer": "The correct answer as plain text",
+  "explanation": "Detailed explanation of why this is correct",
+  "source_context": "Relevant excerpt from the context above"
 }}
+{"]" if num_questions > 1 else ""}
 
-IMPORTANT: Return ONLY the JSON array, no markdown, no additional text.
+CRITICAL: Return ONLY the JSON array, NO markdown code blocks, NO additional text before or after.
 """
 
         try:
@@ -188,7 +194,24 @@ IMPORTANT: Return ONLY the JSON array, no markdown, no additional text.
             # Parse JSON
             questions = json.loads(response)
 
-            return questions
+            # Validate and fix question types
+            validated_questions = []
+            for q in questions:
+                # Ensure question_type matches the requested type
+                if question_type == "mcq":
+                    # MCQ must have options
+                    if not q.get("options") or len(q.get("options", [])) == 0:
+                        # Skip malformed MCQ
+                        continue
+                    q["question_type"] = "mcq"
+                elif question_type == "short_answer":
+                    # Short answer should not have options
+                    q["options"] = None
+                    q["question_type"] = "short_answer"
+
+                validated_questions.append(q)
+
+            return validated_questions
         except json.JSONDecodeError as e:
             raise Exception(f"Failed to parse LLM response as JSON: {str(e)}")
         except Exception as e:

@@ -199,7 +199,7 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
               Q{session.current_question_index + 1} of {session.config.total_questions}
             </span>
           </div>
-          <Timer seconds={timeRemaining} onTimeUp={handleTimeUp} />
+          <Timer key={currentQuestion?._id} seconds={timeRemaining} onTimeUp={handleTimeUp} />
         </div>
       </header>
 

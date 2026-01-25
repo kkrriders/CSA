@@ -21,6 +21,7 @@ export default function DashboardPage() {
   const [uploading, setUploading] = useState(false);
   const [stats, setStats] = useState<DashboardStats | undefined>(undefined);
   const [topics, setTopics] = useState<TopicStats[]>([]);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -60,6 +61,37 @@ export default function DashboardPage() {
 
     loadDashboardData();
   }, [user]);
+
+  // Poll for processing documents
+  useEffect(() => {
+    const hasProcessingDocs = documents.some(doc => doc.processing_status === 'processing' || doc.processing_status === 'pending');
+
+    if (hasProcessingDocs) {
+      // Poll every 3 seconds
+      const interval = setInterval(async () => {
+        try {
+          const docs = await api.getDocuments();
+          setDocuments(docs);
+
+          // Stop polling if no more processing docs
+          const stillProcessing = docs.some(doc => doc.processing_status === 'processing' || doc.processing_status === 'pending');
+          if (!stillProcessing) {
+            clearInterval(interval);
+            setPollingInterval(null);
+            toast.success('Document processing completed!');
+          }
+        } catch (error) {
+          console.error('Error polling documents:', error);
+        }
+      }, 3000);
+
+      setPollingInterval(interval);
+
+      return () => {
+        clearInterval(interval);
+      };
+    }
+  }, [documents]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
