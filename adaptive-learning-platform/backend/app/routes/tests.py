@@ -30,7 +30,7 @@ async def get_in_progress_tests(
     user_id: str = Depends(get_current_user_id),
     db=Depends(get_database)
 ):
-    """Get all in-progress tests for current user"""
+    """Get all in-progress tests for current user (only those worth resuming)"""
 
     cursor = db.test_sessions.find({
         "user_id": ObjectId(user_id),
@@ -41,19 +41,27 @@ async def get_in_progress_tests(
 
     from app.models.test_session import TestConfig
 
-    return [
-        TestSessionResponse(
-            _id=str(s["_id"]),
-            document_id=str(s["document_id"]),
-            config=TestConfig(**s["config"]),
-            current_question_index=s["current_question_index"],
-            total_questions=len(s.get("questions", [])),
-            status=s["status"],
-            started_at=s["started_at"],
-            completed_at=s.get("completed_at")
-        )
-        for s in sessions
-    ]
+    # Only return sessions with at least 1 correct answer (worth resuming)
+    worth_resuming = []
+    for s in sessions:
+        answers = s.get("answers", [])
+        has_correct = any(a.get("is_correct") == True for a in answers)
+
+        if has_correct:
+            worth_resuming.append(
+                TestSessionResponse(
+                    _id=str(s["_id"]),
+                    document_id=str(s["document_id"]),
+                    config=TestConfig(**s["config"]),
+                    current_question_index=s["current_question_index"],
+                    total_questions=len(s.get("questions", [])),
+                    status=s["status"],
+                    started_at=s["started_at"],
+                    completed_at=s.get("completed_at")
+                )
+            )
+
+    return worth_resuming
 
 
 @router.post("/start", response_model=TestSessionResponse, status_code=status.HTTP_201_CREATED)
@@ -72,18 +80,26 @@ async def start_test(
     })
 
     if existing_test:
-        # Return existing test - user will resume where they left off
-        from app.models.test_session import TestConfig
-        return TestSessionResponse(
-            _id=str(existing_test["_id"]),
-            document_id=str(existing_test["document_id"]),
-            config=TestConfig(**existing_test["config"]),
-            current_question_index=existing_test["current_question_index"],
-            total_questions=len(existing_test["questions"]),
-            status=existing_test["status"],
-            started_at=existing_test["started_at"],
-            completed_at=existing_test.get("completed_at")
-        )
+        # Check if test is worth resuming (has at least 1 correct answer)
+        answers = existing_test.get("answers", [])
+        has_correct = any(a.get("is_correct") == True for a in answers)
+
+        if has_correct:
+            # Return existing test - user will resume where they left off
+            from app.models.test_session import TestConfig
+            return TestSessionResponse(
+                _id=str(existing_test["_id"]),
+                document_id=str(existing_test["document_id"]),
+                config=TestConfig(**existing_test["config"]),
+                current_question_index=existing_test["current_question_index"],
+                total_questions=len(existing_test.get("questions", [])),
+                status=existing_test["status"],
+                started_at=existing_test["started_at"],
+                completed_at=existing_test.get("completed_at")
+            )
+        else:
+            # Test has no correct answers, delete it and create new one
+            await db.test_sessions.delete_one({"_id": existing_test["_id"]})
 
     # Verify document exists and belongs to user
     document = await db.documents.find_one({
@@ -116,19 +132,34 @@ async def start_test(
         db=db
     )
 
-    # If we don't have enough questions, we need more
+    # AUTO-GENERATE if not enough questions available
     if needs_generation:
         num_missing = test_config.config.total_questions - len(selected_questions)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Not enough questions available. Found {len(selected_questions)}, need {test_config.config.total_questions}. Please generate {num_missing} more questions first."
-        )
 
-    # Additional validation: ensure we actually have questions
-    if len(selected_questions) == 0:
+        # Trigger background question generation
+        from app.routes.questions import generate_questions_background
+        from app.models.question import QuestionType
+
+        # Convert question types
+        gen_question_types = [QuestionType.MCQ, QuestionType.SHORT_ANSWER] if not question_types else [
+            QuestionType(qt) if isinstance(qt, str) else qt for qt in question_types
+        ]
+
+        # Generate questions in background
+        import asyncio
+        asyncio.create_task(generate_questions_background(
+            document_id=test_config.document_id,
+            user_id=user_id,
+            num_questions=num_missing,
+            difficulty_distribution=None,
+            topics=test_config.config.topics or [],
+            question_types=gen_question_types
+        ))
+
+        # Inform user to wait
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No questions available for this document. Please generate questions first."
+            status_code=status.HTTP_202_ACCEPTED,
+            detail=f"Generating {num_missing} questions. Please wait 30-60 seconds and try again."
         )
 
     # Mark these questions as used

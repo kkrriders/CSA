@@ -48,20 +48,11 @@ function TestConfigureContent() {
   };
 
   const handleStartTest = async () => {
-    // Check if enough questions are available
-    if (poolStats && typeof poolStats === 'object' && poolStats.available !== undefined) {
-      if (poolStats.available < config.num_questions) {
-        const needed = config.num_questions - poolStats.available;
-        toast.error(`Not enough questions available. You have ${poolStats.available}, need ${config.num_questions}. Generate ${needed} more questions first.`);
-        return;
-      }
-    }
-
     setLoading(true);
     const loadingToast = toast.loading('Preparing your test...');
 
     try {
-      // Start test session directly (using smart question selection)
+      // Start test session (auto-generates if needed)
       const session = await api.startTest(documentId!, {
         total_questions: config.num_questions,
         time_per_question: config.time_per_question,
@@ -73,15 +64,33 @@ function TestConfigureContent() {
       toast.success('Test started!', { id: loadingToast });
       router.push(`/test/${session._id}`);
     } catch (error: any) {
+      const status = error.response?.status;
       const errorMsg = error.response?.data?.detail || 'Failed to start test';
-      toast.error(errorMsg, { id: loadingToast });
 
-      // Refresh pool stats after error
-      if (errorMsg.includes('Not enough questions')) {
-        const stats = await api.getQuestionPoolStats(documentId!).catch(() => null);
-        setPoolStats(stats);
+      // 202 = Generating questions in background
+      if (status === 202) {
+        toast.success('Generating questions for you...', { id: loadingToast });
+
+        // Poll for questions to be ready
+        let attempts = 0;
+        const pollInterval = setInterval(async () => {
+          attempts++;
+          const stats = await api.getQuestionPoolStats(documentId!).catch(() => null);
+
+          if (stats && stats.available >= config.num_questions) {
+            clearInterval(pollInterval);
+            toast.success('Questions ready! Starting test...');
+            handleStartTest(); // Retry
+          } else if (attempts >= 20) {
+            clearInterval(pollInterval);
+            toast.error('Generation taking longer than expected. Please try again in a moment.');
+            setLoading(false);
+          }
+        }, 3000); // Poll every 3 seconds
+        return;
       }
-    } finally {
+
+      toast.error(errorMsg, { id: loadingToast });
       setLoading(false);
     }
   };
@@ -235,23 +244,19 @@ function TestConfigureContent() {
           {/* Start Button */}
           <button
             onClick={handleStartTest}
-            disabled={
-              loading ||
-              config.num_questions < 5 ||
-              (poolStats && typeof poolStats === 'object' && poolStats.available !== undefined && poolStats.available < config.num_questions)
-            }
+            disabled={loading || config.num_questions < 5}
             className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed dark:bg-blue-500 dark:hover:bg-blue-600"
           >
-            {loading ? 'Starting Test...' :
+            {loading ? 'Preparing Test...' :
              config.num_questions < 5 ? 'Need at least 5 questions' :
-             poolStats && typeof poolStats === 'object' && poolStats.available !== undefined && poolStats.available < config.num_questions ?
-             `Need ${config.num_questions - poolStats.available} More Questions` :
+             poolStats && typeof poolStats === 'object' && poolStats.available !== undefined && poolStats.available === 0 ?
+             'Start Test (Will generate questions)' :
              'Start Test'}
           </button>
 
-          {poolStats && typeof poolStats === 'object' && poolStats.available !== undefined && poolStats.available < config.num_questions && (
-            <p className="mt-3 text-center text-sm text-orange-600 dark:text-orange-400">
-              Generate more questions or reduce the number of questions to start the test
+          {poolStats && typeof poolStats === 'object' && poolStats.available !== undefined && poolStats.available === 0 && (
+            <p className="mt-3 text-center text-sm text-blue-600 dark:text-blue-400">
+              No questions yet. We'll generate them for you when you start!
             </p>
           )}
         </div>
