@@ -108,8 +108,13 @@ class APIClient {
   }
 
   async getInProgressTests(): Promise<TestSession[]> {
-    const { data } = await this.client.get('/tests/in-progress');
-    return data;
+    try {
+      const { data } = await this.client.get('/tests/in-progress');
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Error fetching in-progress tests:', error);
+      return [];
+    }
   }
 
   async getTestSession(sessionId: string): Promise<TestSession> {

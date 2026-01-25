@@ -36,7 +36,10 @@ export default function DashboardPage() {
           api.getDocuments(),
           api.getUserDashboardStats().catch(() => null),
           api.getLearningVelocity().catch(() => ({ velocities: [] })),
-          api.getInProgressTests().catch(() => [])
+          api.getInProgressTests().catch(err => {
+            console.error('Failed to load in-progress tests:', err);
+            return [];
+          })
         ]);
         
         setDocuments(docs);
@@ -136,7 +139,7 @@ export default function DashboardPage() {
     // Check if there's an in-progress test for this document
     const inProgressTest = inProgressTests.find(t => t.document_id === documentId);
 
-    if (inProgressTest) {
+    if (inProgressTest && inProgressTest._id) {
       // Resume existing test
       router.push(`/test/${inProgressTest._id}`);
     } else {
@@ -229,23 +232,26 @@ export default function DashboardPage() {
                       <div className="flex gap-2">
                         {doc.processing_status === 'completed' && (
                           <>
-                            {inProgressTests.find(t => t.document_id === doc._id) ? (
-                              <button
-                                onClick={() => handleStartTest(doc._id)}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
-                              >
-                                <PlayCircle className="w-4 h-4" />
-                                Resume Test
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleStartTest(doc._id)}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-                              >
-                                <PlayCircle className="w-4 h-4" />
-                                Start Test
-                              </button>
-                            )}
+                            {(() => {
+                              const inProgressTest = inProgressTests.find(t => t.document_id === doc._id);
+                              return inProgressTest && inProgressTest._id ? (
+                                <button
+                                  onClick={() => handleStartTest(doc._id)}
+                                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+                                >
+                                  <PlayCircle className="w-4 h-4" />
+                                  Resume Test
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleStartTest(doc._id)}
+                                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
+                                >
+                                  <PlayCircle className="w-4 h-4" />
+                                  Start Test
+                                </button>
+                              );
+                            })()}
                           </>
                         )}
                         <button
