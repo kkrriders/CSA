@@ -4,7 +4,7 @@ import DOMPurify from 'dompurify';
 interface SanitizedContentProps {
   content: string;
   className?: string;
-  tagName?: 'div' | 'span' | 'p' | 'article' | 'section';
+  tagName?: 'div' | 'span' | 'p' | 'article' | 'section' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 }
 
 export default function SanitizedContent({ 

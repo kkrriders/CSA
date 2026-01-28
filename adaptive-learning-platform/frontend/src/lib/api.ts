@@ -131,12 +131,16 @@ class APIClient {
     sessionId: string,
     questionId: string,
     userAnswer: string,
-    timeTaken: number
+    timeTaken: number,
+    changedAnswer: boolean = false,
+    hesitationTime: number = 0
   ): Promise<SubmitAnswerResponse> {
     const { data } = await this.client.post(`/tests/${sessionId}/submit-answer`, {
       question_id: questionId,
       user_answer: userAnswer,
       time_taken: timeTaken,
+      changed_answer: changedAnswer,
+      hesitation_count: hesitationTime
     });
     return data;
   }

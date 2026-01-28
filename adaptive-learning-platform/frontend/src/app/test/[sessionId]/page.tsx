@@ -27,6 +27,10 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
   const [timeRemaining, setTimeRemaining] = useState<number>(90);
   const [endingEarly, setEndingEarly] = useState(false);
 
+  // Telemetry state
+  const [hasChangedAnswer, setHasChangedAnswer] = useState(false);
+  const [hesitationCount, setHesitationCount] = useState(0);
+
   // New UI states
   const [confidence, setConfidence] = useState<number>(50);
   const [flagReason, setFlagReason] = useState<string>('Needs Review');
@@ -63,6 +67,8 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
       setCurrentAnswer('');
       setConfidence(50);
       setFlagReason('Needs Review');
+      setHasChangedAnswer(false);
+      setHesitationCount(0);
       setStartTime(Date.now());
       setTimeRemaining(session?.config.time_per_question || 90);
     } catch (error: any) {
@@ -85,6 +91,17 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
     }
   };
 
+  const handleAnswerChange = (answer: string) => {
+    if (currentAnswer && currentAnswer !== answer) {
+      setHasChangedAnswer(true);
+    }
+    setCurrentAnswer(answer);
+  };
+
+  const handleHesitation = () => {
+    setHesitationCount(prev => prev + 1);
+  };
+
   const handleSubmitAnswer = useCallback(async () => {
     if (!currentQuestion || !session || submitting) return;
 
@@ -99,7 +116,9 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
         sessionId,
         currentQuestion._id,
         currentAnswer || 'SKIPPED_TIMEOUT',
-        timeTaken
+        timeTaken,
+        hasChangedAnswer,
+        hesitationCount
       );
 
       // Update local state for Review Panel
@@ -127,7 +146,7 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
     } finally {
       setSubmitting(false);
     }
-  }, [currentQuestion, session, submitting, startTime, sessionId, currentAnswer, answers, markedReview, router, flagReason, confidence]);
+  }, [currentQuestion, session, submitting, startTime, sessionId, currentAnswer, answers, markedReview, router, flagReason, confidence, hasChangedAnswer, hesitationCount]);
 
   const handleMarkReview = () => {
     if (!currentQuestion) return;
@@ -161,7 +180,7 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
         if (['1', '2', '3', '4'].includes(e.key)) {
           const index = parseInt(e.key) - 1;
           if (index < currentQuestion.options.length) {
-            setCurrentAnswer(currentQuestion.options[index].text);
+            handleAnswerChange(currentQuestion.options[index].text);
           }
         }
       }
@@ -174,7 +193,7 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentQuestion, submitting, handleSubmitAnswer]);
+  }, [currentQuestion, submitting, handleSubmitAnswer, currentAnswer]);
 
   if (loading && !currentQuestion) {
     return (
@@ -221,7 +240,7 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
             <QuestionCard
               question={currentQuestion}
               userAnswer={currentAnswer}
-              onAnswerChange={setCurrentAnswer}
+              onAnswerChange={handleAnswerChange}
               onMarkReview={handleMarkReview}
               isMarkedReview={markedReview.has(currentQuestion._id)}
               questionNumber={session.current_question_index + 1}
@@ -229,6 +248,7 @@ export default function TestSessionPage({ params }: { params: { sessionId: strin
               onConfidenceChange={setConfidence}
               flagReason={flagReason}
               onFlagReasonChange={setFlagReason}
+              onOptionHover={handleHesitation}
             />
 
             <div className="mt-8 flex justify-between items-center">

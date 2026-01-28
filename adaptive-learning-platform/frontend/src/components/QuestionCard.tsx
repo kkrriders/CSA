@@ -14,6 +14,7 @@ interface QuestionCardProps {
   onConfidenceChange?: (value: number) => void;
   flagReason?: string;
   onFlagReasonChange?: (reason: string) => void;
+  onOptionHover?: () => void;
 }
 
 export default function QuestionCard({
@@ -26,7 +27,8 @@ export default function QuestionCard({
   confidence = 50,
   onConfidenceChange,
   flagReason,
-  onFlagReasonChange
+  onFlagReasonChange,
+  onOptionHover
 }: QuestionCardProps) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 transition-colors duration-200">
@@ -81,6 +83,7 @@ export default function QuestionCard({
             {question.options.map((option, idx) => (
               <label
                 key={idx}
+                onMouseEnter={onOptionHover}
                 className={`
                   flex items-center p-4 rounded-lg border-2 cursor-pointer transition relative
                   hover:border-blue-300 dark:hover:border-blue-700
