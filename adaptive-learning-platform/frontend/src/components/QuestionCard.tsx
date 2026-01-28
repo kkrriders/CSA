@@ -1,6 +1,7 @@
 import { Question } from '@/types';
 import { Flag, HelpCircle } from 'lucide-react';
 import ConfidenceSlider from './ConfidenceSlider';
+import SanitizedContent from './SanitizedContent';
 
 interface QuestionCardProps {
   question: Question;
@@ -34,9 +35,11 @@ export default function QuestionCard({
           <span className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1 block">
             Question {questionNumber}
           </span>
-          <h2 id="question-text" className="text-xl font-bold text-gray-900 dark:text-white leading-relaxed">
-            {question.question_text}
-          </h2>
+          <SanitizedContent 
+            tagName="h2"
+            content={question.question_text}
+            className="text-xl font-bold text-gray-900 dark:text-white leading-relaxed"
+          />
         </div>
         <div className="flex flex-col items-end gap-2 ml-4 flex-shrink-0">
           <button
@@ -96,7 +99,9 @@ export default function QuestionCard({
                   onChange={(e) => onAnswerChange(e.target.value)}
                   className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 dark:focus:ring-offset-gray-800"
                 />
-                <span className="ml-3 text-gray-700 dark:text-gray-200 font-medium">{option.text}</span>
+                <span className="ml-3 text-gray-700 dark:text-gray-200 font-medium">
+                  <SanitizedContent content={option.text} tagName="span" />
+                </span>
               </label>
             ))}
           </div>

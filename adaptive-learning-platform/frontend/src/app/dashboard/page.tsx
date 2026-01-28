@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, FileText, Loader, Trash2, PlayCircle } from 'lucide-react';
+import { Upload, FileText, Trash2, PlayCircle, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
@@ -12,6 +12,10 @@ import QuickStatsCards, { DashboardStats } from '@/components/dashboard/QuickSta
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
 import TopicOverview, { TopicStats } from '@/components/dashboard/TopicOverview';
 import RecommendedActions from '@/components/dashboard/RecommendedActions';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -53,7 +57,7 @@ export default function DashboardPage() {
           const topicStats = velocity.velocities.map((v: any) => ({
             name: v.topic,
             mastery: Math.round((v.mastery_trajectory[v.mastery_trajectory.length - 1] || 0) * 100),
-            count: v.sessions_analyzed // Proxy for count, or just show sessions
+            count: v.sessions_analyzed
           }));
           setTopics(topicStats);
         }
@@ -73,13 +77,11 @@ export default function DashboardPage() {
     const hasProcessingDocs = documents.some(doc => doc.processing_status === 'processing' || doc.processing_status === 'pending');
 
     if (hasProcessingDocs) {
-      // Poll every 3 seconds
       const interval = setInterval(async () => {
         try {
           const docs = await api.getDocuments();
           setDocuments(docs);
 
-          // Stop polling if no more processing docs
           const stillProcessing = docs.some(doc => doc.processing_status === 'processing' || doc.processing_status === 'pending');
           if (!stillProcessing) {
             clearInterval(interval);
@@ -112,7 +114,6 @@ export default function DashboardPage() {
     try {
       await api.uploadDocument(file);
       toast.success('Document uploaded! Processing...');
-      // Reload documents
       const docs = await api.getDocuments();
       setDocuments(docs);
     } catch (error: any) {
@@ -136,140 +137,151 @@ export default function DashboardPage() {
   };
 
   const handleStartTest = (documentId: string) => {
-    // Check if there's an in-progress test for this document
     const inProgressTest = inProgressTests.find(t => t.document_id === documentId);
 
     if (inProgressTest && inProgressTest._id) {
-      // Resume existing test
       router.push(`/test/${inProgressTest._id}`);
     } else {
-      // Configure new test
       router.push(`/test/configure?documentId=${documentId}`);
     }
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header Row */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+    <div className="container mx-auto px-4 py-8 space-y-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold mb-2 dark:text-white">Welcome back, {user?.name}!</h1>
-          <p className="text-gray-600 dark:text-gray-400">Ready to continue your learning journey?</p>
-        </div>
-        <div className="w-full md:w-auto">
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back, {user?.name}! Ready to continue your learning journey?
+          </p>
         </div>
       </div>
 
-      {/* Stats Row */}
-      <div className="mb-8">
-        <QuickStatsCards stats={stats} />
-      </div>
+      <QuickStatsCards stats={stats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content Column (Left) */}
+        {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
           <RecommendedActions />
 
-          {/* Upload Section */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-bold mb-4 dark:text-white">Upload Document</h2>
-            <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-8 text-center hover:border-blue-500 dark:hover:border-blue-500 transition">
-              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <label className="cursor-pointer">
-                <span className="text-blue-600 hover:text-blue-700 font-semibold">
-                  {uploading ? 'Uploading...' : 'Click to upload'}
-                </span>
-                <span className="text-gray-600 dark:text-gray-400"> or drag and drop</span>
-                <input
-                  type="file"
-                  accept=".pdf,.md"
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                  className="hidden"
-                />
-              </label>
-              <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">PDF or Markdown files (Max 50MB)</p>
-            </div>
-          </div>
-
-          {/* Documents List */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-bold mb-6 dark:text-white">Your Documents</h2>
-
-            {loading ? (
-              <div className="text-center py-12">
-                <Loader className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
-                <p className="text-gray-600 dark:text-gray-400 mt-4">Loading documents...</p>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div className="space-y-1">
+                <CardTitle>Documents</CardTitle>
+                <CardDescription>
+                  Manage your study materials and start new tests.
+                </CardDescription>
               </div>
-            ) : documents.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">No documents yet. Upload one to get started!</p>
+              <div className="relative">
+                 <input
+                    type="file"
+                    accept=".pdf,.md"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                    id="file-upload"
+                  />
+                  <Button disabled={uploading} className="cursor-pointer">
+                    {uploading ? (
+                      <>Uploading...</>
+                    ) : (
+                      <>
+                        <Plus className="mr-2 h-4 w-4" /> Upload New
+                      </>
+                    )}
+                  </Button>
               </div>
-            ) : (
-              <div className="grid gap-4">
-                {documents.map((doc) => (
-                  <div
-                    key={doc._id}
-                    className="border dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition dark:bg-gray-800"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg dark:text-white">{doc.title}</h3>
-                        <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          <span>{doc.sections_count} sections</span>
-                          <span>{doc.word_count} words</span>
-                          <span className={`px-2 py-1 rounded ${
-                            doc.processing_status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
-                            doc.processing_status === 'processing' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-                            doc.processing_status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' :
-                            'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                          }`}>
-                            {doc.processing_status}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {doc.processing_status === 'completed' && (
-                          <>
-                            {(() => {
-                              const inProgressTest = inProgressTests.find(t => t.document_id === doc._id);
-                              return inProgressTest && inProgressTest._id ? (
-                                <button
-                                  onClick={() => handleStartTest(doc._id)}
-                                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
-                                >
-                                  <PlayCircle className="w-4 h-4" />
-                                  Resume Test
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleStartTest(doc._id)}
-                                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-                                >
-                                  <PlayCircle className="w-4 h-4" />
-                                  Start Test
-                                </button>
-                              );
-                            })()}
-                          </>
-                        )}
-                        <button
-                          onClick={() => handleDelete(doc._id)}
-                          className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center space-x-4">
+                      <Skeleton className="h-12 w-12 rounded-lg" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-[250px]" />
+                        <Skeleton className="h-4 w-[200px]" />
                       </div>
                     </div>
+                  ))}
+                </div>
+              ) : documents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg bg-muted/50">
+                  <div className="bg-background p-4 rounded-full mb-4">
+                    <Upload className="w-8 h-8 text-muted-foreground" />
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  <h3 className="text-lg font-semibold mb-1">No documents yet</h3>
+                  <p className="text-muted-foreground max-w-sm mb-4">
+                    Upload your first PDF or Markdown file to generate questions and start learning.
+                  </p>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".pdf,.md"
+                      onChange={handleFileUpload}
+                      disabled={uploading}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <Button variant="outline">Select File</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {documents.map((doc) => (
+                    <div
+                      key={doc._id}
+                      className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <FileText className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold">{doc.title}</h4>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                            <span>{doc.sections_count} sections</span>
+                            <span>•</span>
+                            <span>{doc.word_count} words</span>
+                            <Badge variant={
+                              doc.processing_status === 'completed' ? 'default' :
+                              doc.processing_status === 'failed' ? 'destructive' :
+                              'secondary'
+                            }>
+                              {doc.processing_status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {doc.processing_status === 'completed' && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleStartTest(doc._id)}
+                            className="gap-2"
+                          >
+                            <PlayCircle className="w-4 h-4" />
+                            {inProgressTests.find(t => t.document_id === doc._id) ? 'Resume' : 'Start'}
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(doc._id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Sidebar Column (Right) */}
+        {/* Sidebar */}
         <div className="space-y-8">
           <StreakCounter streak={stats?.streak} />
           <TopicOverview topics={topics} />
