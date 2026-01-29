@@ -1,6 +1,5 @@
-"""
-Data export and GDPR compliance service.
-"""
+
+
 from datetime import datetime
 from typing import Dict
 from bson import ObjectId
